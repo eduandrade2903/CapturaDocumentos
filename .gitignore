@@ -1,0 +1,12 @@
+/vendor
+/app/files
+/.vscode
+/vendor
+.env
+# so mais um teste de automatizacao de deploy
+# teste 2
+# Ignorar certificados criptográficos e chaves privadas
+app/config/certs/*.key
+app/config/certs/*.pem
+app/config/certs/*.crt
+ArquivosHolerites/
