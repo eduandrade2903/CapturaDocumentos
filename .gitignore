@@ -8,3 +8,4 @@ app/config/certs/*.key
 app/config/certs/*.pem
 app/config/certs/*.crt
 /docker
+docker-compose.yml
