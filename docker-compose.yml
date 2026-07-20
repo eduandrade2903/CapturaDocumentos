@@ -1,0 +1,60 @@
+services:
+
+  # =====================
+  # Serviço PHP + Apache
+  # =====================
+  php:
+    build:
+      context: ./docker
+      args:
+        USER_ID: 501         # ajuste conforme seu host (Mac: 501, WSL/Linux: 1000)
+    image: adianti-php:8.4    # nome da imagem (será criada com build)
+    container_name: adianti-php
+    restart: unless-stopped
+    ports:
+      - "8080:80"             # host:container – mude a porta se quiser
+    volumes:
+      - .:/var/www/html   # monta o código no Apache
+      # Opcional: montar o php.ini externo, mas já está na imagem
+      # - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    networks:
+      - app-network
+    depends_on:
+      - db                     # garante que o MySQL suba primeiro
+
+  # =====================
+  # Serviço MySQL 8.4
+  # =====================
+  db:
+    image: mysql:8.4
+    container_name: adianti-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${CONTAINER_MYSQL_ROOT_PASSWORD}    # vindo do .env
+      #MYSQL_DATABASE: ${CONTAINER_MYSQL_DATABASE}
+      MYSQL_USER: ${CONTAINER_MYSQL_USER}
+      MYSQL_PASSWORD: ${CONTAINER_MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql   # volume nomeado, persistente
+      # Opcional: script de inicialização
+      - ./docker/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"              # expõe porta se quiser acessar externamente
+    networks:
+      - app-network
+
+# =====================
+# Volume nomeado
+# =====================
+volumes:
+  db_data:
+    driver: local
+
+# =====================
+# Rede personalizada
+# =====================
+networks:
+  app-network:
+    driver: bridge

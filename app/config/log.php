@@ -1,10 +1,10 @@
 <?php
 return [
-    'host'  =>  $_ENV['DB_HOST_RDS'],
-    'port'  =>  $_ENV['DB_PORT_RDS'],
-    'name'  =>  $_ENV['DB_DATABASE_LOG'],
-    'user'  =>  $_ENV['DB_USER'],
-    'pass'  =>  $_ENV['DB_PASS'],
+    'host'  =>  $_ENV['CONTAINER_MYSQL_HOST'],
+    'port'  =>  $_ENV['CONTAINER_MYSQL_PORT'],
+    'name'  =>  $_ENV['CONTAINER_MYSQL_DATABASE_LOG'],
+    'user'  =>  $_ENV['CONTAINER_MYSQL_USER'],
+    'pass'  =>  $_ENV['CONTAINER_MYSQL_PASSWORD'],
     'type'  =>  "mysql",
     'prep'  =>  "1"
 ];
