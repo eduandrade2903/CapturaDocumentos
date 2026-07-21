@@ -32,6 +32,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     mysqli \
     xsl
 
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+
 RUN a2enmod rewrite
 
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini

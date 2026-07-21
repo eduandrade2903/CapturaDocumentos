@@ -1,6 +1,5 @@
 /vendor
 /app/files
-/.vscode
 /vendor
 /tmp
 .env
