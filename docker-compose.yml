@@ -7,7 +7,7 @@ services:
     build:
       context: ./docker
       args:
-        USER_ID: 501         # ajuste conforme seu host (Mac: 501, WSL/Linux: 1000)
+        USER_ID: ${USER_ID}         # ajuste conforme seu host (Mac: 501, WSL/Linux: 1000)
     image: adianti-php:8.4    # nome da imagem (será criada com build)
     container_name: adianti-php
     restart: unless-stopped

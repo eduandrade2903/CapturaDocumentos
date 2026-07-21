@@ -38,7 +38,7 @@ COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-ARG USER_ID=501
+ARG USER_ID=${USER_ID}
 RUN usermod -u ${USER_ID} www-data && groupmod -g ${USER_ID} www-data
 
 WORKDIR /var/www/html
