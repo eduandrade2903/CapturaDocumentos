@@ -181,8 +181,11 @@ RewriteRule ^user-groups/([A-Za-z0-9]*)$ rest.php?class=SystemUserGroupRestServi
 RewriteRule ^user-groups/([A-Za-z-_0-9]*)/([A-Za-z-_0-9]*)$ rest.php?class=SystemUserGroupRestService&method=$2&id=$1&%{QUERY_STRING} [NC]
 RewriteRule ^user-groups$ rest.php?class=SystemUserGroupRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^empresas$ restp.php?class=EmpresasRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^empresas$ rest.php?class=EmpresasRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^empresas/([A-Za-z0-9]*)$ rest.php?class=EmpresasRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+
+RewriteRule ^usuarios$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^usuarios/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied

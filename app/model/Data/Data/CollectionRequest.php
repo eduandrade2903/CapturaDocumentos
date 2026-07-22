@@ -19,5 +19,32 @@ class CollectionRequest extends TRecord
         parent::addAttribute('data_criacao');
         parent::addAttribute('data_expiracao');
     }
+
+    public function getEmpresa()
+    {
+        return new Empresas($this->empresa_id);
+    }
+
+    public function getUsuario()
+    {
+        return new Usuarios($this->usuario_id);
+    }
+
+    public static function isCollectionRequestExistente($id) {
+        $existe = CollectionRequest::where('id', '=', $id)->first();
+        if(!$existe) {
+            return throw new Exception("Solicitação de coleta com ID $id não encontrada.");
+        }
+        else {
+            return $existe;
+        }
+    }
+
+    public static function verificaCamposObrigatorios($data) {
+        if (empty($data['empresa_id']) || empty($data['usuario_id']) || empty($data['token_unico']) || empty($data['status'])) {
+            return false;
+        }
+        return true;
+    }
     
 }

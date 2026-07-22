@@ -16,4 +16,21 @@ class Usuarios extends TRecord {
         parent::addAttribute('email');
         parent::addAttribute('telefone');
     }
+
+    public function verifica() {
+    if (empty($this->nome_completo) || empty($this->cpf)) {
+       return false;
+    }
+    return true;
+   }
+
+   public static function isUsuarioExistente($id) {
+    $existe = Usuarios::where('id', '=', $id)->first();
+    if(!$existe) {
+        return throw new Exception("Usuário com ID $id não encontrado.");
+    }
+    else {
+        return $existe;
+    }
+   }
 }
