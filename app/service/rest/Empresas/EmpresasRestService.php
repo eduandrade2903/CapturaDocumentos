@@ -14,59 +14,61 @@ class EmpresasRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'razao_social', 'cnpj', 'api_key', 'nome_contato', 'email', 'telefone', 'webhook_url', 'data_cadastro'];
     // const REST_KEY      = 'public';
 
+    /**
+     * @description Endpoint principal para requisições REST
+     * @param array $param
+     * @return array
+     */
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
-        
+
         unset($param['class']);
         unset($param['method']);
-        
-        
-        switch( $method )
-        {
+
+
+        switch ($method) {
             case 'GET':
-                if (!empty($param['id']))
-                {
-                    return $this->getById($param);
-                }
+                return $this->getByKey($param);
                 break;
             case 'POST':
                 return $this->create($param);
                 break;
             case 'PUT':
-                return $this->store($param);
-                break;        
+                return $this->update($param);
+                break;
             case 'DELETE':
-                if (!empty($param['id']))
-                {
+                if (!empty($param['id'])) {
                     return $this->delete($param);
-                }
-                else
-                {
+                } else {
                     return $this->deleteAll($param);
                 }
                 break;
         }
     }
-    
-    
-    public function create(array $request)
+
+    /**
+     * Cria uma nova empresa
+     * @param array $request['data']=['razao_social', 'cnpj', 'nome_contato', 'email', 'telefone', 'webhook_url']
+     * @return array dados da empresa com a chave de API gerada
+     */
+    public function create(array $request): array
     {
-        try{
+        try {
             TTransaction::open('data');
 
             $data = $request['data'] ?? [];
 
-            if($data['razao_social'] === null || $data['cnpj'] === null || $data['nome_contato'] === null || $data['email'] === null) {
+            if ($data['razao_social'] === null || $data['cnpj'] === null || $data['nome_contato'] === null || $data['email'] === null) {
                 http_response_code(400); // Set HTTP status code to 400 Bad Request
                 throw new Exception('Todos os campos são obrigatórios.');
             }
-            
+
             $empresa = new Empresas();
             $empresa->fromArray($data);
             $empresa->api_key = bin2hex(random_bytes(128)); // Generate a random API key
             $empresa->data_cadastro = date('Y-m-d H:i:s');
-            
+
             $empresa->store();
 
             TTransaction::close();
@@ -77,9 +79,7 @@ class EmpresasRestService extends AdiantiRecordService
                 'message' => 'Empresa criada com sucesso',
                 'api_key' => $empresa->api_key
             ];
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500); // Set HTTP status code to 500 Internal Server Error
             return [
@@ -89,33 +89,74 @@ class EmpresasRestService extends AdiantiRecordService
         }
     }
 
-    public function getById(array $request)
+    /**
+     * @description Obtem os dados de uma empresa pela chave de API
+     * @param array $request['data']=['api_key']
+     * @return array dados da empresa
+     */
+    public function getByKey(array $request): array
     {
-        try{
-            
-            TTransaction::open('data');
+        try {
+            $headers  = AdiantiCoreApplication::getHeaders();
 
-            $empresa = new Empresas($request['id']);
-            if(!$empresa) {
-                http_response_code(404); // Set HTTP status code to 404 Not Found
-                throw new Exception('Parametro invalido.');
-            }
+            TTransaction::open('data');
+            $empresa = Empresas::where('api_key', '=', $headers['api_key'])->first();
             TTransaction::close();
 
-            $headers  = AdiantiCoreApplication::getHeaders();
-            if($empresa->api_key !== $headers['api_key']) {
+            if (!$empresa) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden
                 throw new Exception('Chave de API invalida.');
-            }         
+            }
+
+            unset($empresa->id);
 
             http_response_code(200); // Set HTTP status code to 200 OK
             return [
                 'status' => 'success',
                 'data' => $empresa->toArray()
             ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(404); // Set HTTP status code to 404 Not Found
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
         }
-        catch (Exception $e)
-        {
+    }
+
+    /**
+     * @description Atualiza os dados de uma empresa existente
+     * @param array $request['data']=['razao_social', 'cnpj', 'nome_contato', 'email', 'telefone', 'webhook_url']
+     * @return array dados atualizados da empresa
+     */
+    public function update(array $request): array
+    {
+        try {
+            $headers = AdiantiCoreApplication::getHeaders();
+            $data = $request['data'] ?? [];
+
+            TTransaction::open('data');
+
+            $empresa = Empresas::where('api_key', '=', $headers['api_key'])->first();
+
+            if (!$empresa) {
+                http_response_code(403); // Set HTTP status code to 403 Forbidden
+                throw new Exception('Chave de API invalida');
+            }
+
+            $empresa->fromArray($data);
+            $empresa->store();
+            TTransaction::close();
+
+            unset($empresa->id);
+
+            http_response_code(200); // Set HTTP status code to 200 OK
+            return [
+                'status' => 'success',
+                'data' => $empresa->toArray()
+            ];
+        } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
             return [
@@ -125,4 +166,3 @@ class EmpresasRestService extends AdiantiRecordService
         }
     }
 }
-
