@@ -7,7 +7,7 @@ class UsuariosRestService extends AdiantiRecordService
 {
     const DATABASE      = 'data';
     const ACTIVE_RECORD = 'Usuarios';
-    const ATTRIBUTES    = ['id', 'nome', 'email', 'senha', 'data_cadastro'];
+    const ATTRIBUTES    = ['id', 'nome_completo', 'cpf', 'email', 'telefone'];
     // const REST_KEY      = 'public';
 
     public function handle($param)
@@ -51,12 +51,12 @@ class UsuariosRestService extends AdiantiRecordService
     public function create(array $request)
     {
         try {
+            
             TTransaction::open('data');
             $usuario = new Usuarios($request['id'] ?? NULL);
             $usuario->fromArray($request['data'] ?? []);
             $usuario->verifica() ? $usuario->store() : throw new Exception('Campos obrigatórios não preenchidos'); // Chama o método verifica() para validar os campos obrigatórios
             TTransaction::close();
-
             http_response_code(201);
             return [
                 'status' => 'success',
