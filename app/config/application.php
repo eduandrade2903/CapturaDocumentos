@@ -7,7 +7,7 @@ return [
         'title' => 'Documentos',
         'theme' => 'adminbs5',
         'seed' => 'odfu6asnodf8as',
-        'rest_key' => '',
+        'rest_key' => $_ENV['REST_KEY'],
         'multiunit' => '1',
         'public_view' => '0',
         'public_entry' => '',
