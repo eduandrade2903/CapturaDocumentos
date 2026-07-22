@@ -24,7 +24,7 @@ class AdiantiRestServer
         
         try
         {
-            $response = AdiantiCoreApplication::execute($class, $method, $request, 'rest');
+            $response = AdiantiCoreApplication::execute($class, $method, $request, 'restp');
             if (is_array($response))
             {
                 array_walk_recursive($response, ['AdiantiStringConversion', 'assureUnicode']);
