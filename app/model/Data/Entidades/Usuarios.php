@@ -16,4 +16,11 @@ class Usuarios extends TRecord {
         parent::addAttribute('email');
         parent::addAttribute('telefone');
     }
+
+    public function verifica() {
+    if (empty($this->nome_completo) || empty($this->cpf)) {
+       return false;
+    }
+    return true;
+   }
 }
