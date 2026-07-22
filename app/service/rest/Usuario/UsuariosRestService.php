@@ -24,13 +24,15 @@ class UsuariosRestService extends AdiantiRecordService
                 if (!empty($param['id']))
                 {
                     return $this->getById($param);
+                }else {
+                    return $this->loadAll($param);
                 }
                 break;
             case 'POST':
                 return $this->create($param);
                 break;
             case 'PUT':
-                return $this->store($param);
+                return $this->update($param);
                 break;        
             case 'DELETE':
                 if (!empty($param['id']))
@@ -84,4 +86,19 @@ class UsuariosRestService extends AdiantiRecordService
             throw new Exception('Erro ao buscar usuário: ' . $e->getMessage());
         }
     }
+
+    public function update($param) {
+        try {
+            TTransaction::open('data');
+            $usuario = Usuarios::isUsuarioExistente($param['id']); // Verifica se o usuário existe antes de atualizar
+            $usuario->fromArray($param['data'] ?? []);
+            $usuario->store();
+            TTransaction::close();
+        }catch (Exception $e) {
+            TTransaction::rollback();
+            throw new Exception('Erro ao atualizar usuário: ' . $e->getMessage());
+        }
+    }
+
+
 }

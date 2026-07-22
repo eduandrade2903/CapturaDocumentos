@@ -23,4 +23,14 @@ class Usuarios extends TRecord {
     }
     return true;
    }
+
+   public static function isUsuarioExistente($id) {
+    $existe = Usuarios::where('id', '=', $id)->first();
+    if(!$existe) {
+        return throw new Exception("Usuário com ID $id não encontrado.");
+    }
+    else {
+        return $existe;
+    }
+   }
 }
