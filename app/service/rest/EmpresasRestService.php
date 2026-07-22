@@ -1,5 +1,6 @@
 <?php
 
+use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
 /**
@@ -14,7 +15,8 @@ class EmpresasRestService extends AdiantiRecordService
 
     public static function newEmpresa($request)
     {
-        $data = json_decode($request->getBody(), true);
+        TTransaction::open('data');
+        $data = $request['data'] ?? [];
         $empresa = new Empresas();
         $empresa->razao_social = $data['razao_social'];
         $empresa->cnpj = $data['cnpj'];
@@ -26,9 +28,12 @@ class EmpresasRestService extends AdiantiRecordService
         $empresa->data_cadastro = date('Y-m-d H:i:s');
         $empresa->store();
 
+        TTransaction::close();
+
+        http_response_code(201); // Set HTTP status code to 201 Created
         return [
             'status' => 'success',
-            'message' => 'Empresa created successfully',
+            'message' => 'Empresa criada com sucesso',
             'api_key' => $empresa->api_key
         ];
     }
