@@ -21,4 +21,13 @@ class WebhookEvents extends TRecord {
         parent::addAttribute('tentativas');
         parent::addAttribute('criado_em');
     }
+
+    public static function getByEmpresaId(string $empresa_id) {
+        $webhookEvents = self::where('empresa_id', '=', $empresa_id)->load();
+        $data = array_map(function ($webhookEvent) {
+            return $webhookEvent->toArray();
+        }, $webhookEvents);
+        
+        return $data;
+    }
 }
