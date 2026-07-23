@@ -66,7 +66,7 @@ class EmpresasRestService extends AdiantiRecordService
 
             $empresa = new Empresas();
             $empresa->fromArray($data);
-            $empresa->api_key = bin2hex(random_bytes(128)); // Generate a random API key
+            $empresa->api_key = bin2hex(random_bytes(64)); // Generate a random API key
             $empresa->data_cadastro = date('Y-m-d H:i:s');
 
             $empresa->store();

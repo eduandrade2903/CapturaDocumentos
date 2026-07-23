@@ -17,7 +17,7 @@ class Usuarios extends TRecord {
         parent::addAttribute('telefone');
     }
 
-    public function verifica() {
+    public static function verifica() {
     if (empty($this->nome_completo) || empty($this->cpf)) {
        return false;
     }
