@@ -17,11 +17,17 @@ class Usuarios extends TRecord {
         parent::addAttribute('telefone');
     }
 
-    public static function verifica() {
-    if (empty($this->nome_completo) || empty($this->cpf)) {
+    
+
+    public function verifica() {
+
+    if (empty($this->nome_completo) || empty($this->cpf )) {
        return false;
     }
-    return true;
+     if(Usuarios::where('cpf', '=', $this->cpf)->first()) {
+        throw new Exception("CPF já cadastrado no sistema.");
+     }
+     return true;
    }
 
    public static function isUsuarioExistente($id) {
@@ -32,5 +38,12 @@ class Usuarios extends TRecord {
     else {
         return $existe;
     }
+   }
+
+   public function store() { 
+    if (!$this->verifica()) {
+        throw new Exception("Campos obrigatórios não preenchidos.");
+    }
+    parent::store();
    }
 }

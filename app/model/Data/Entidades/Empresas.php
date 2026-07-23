@@ -19,4 +19,28 @@ class Empresas extends TRecord {
         parent::addAttribute('webhook_url');
         parent::addAttribute('data_cadastro');
     }
+
+
+    public static function getEmpresaByApiKey($apiKey) {
+        if (empty($apiKey)) {
+            throw new Exception("API Key não fornecida.");
+        }
+
+        $empresa = Empresas::where('api_key', '=', $apiKey)->first();
+
+        if (!$empresa) {
+            throw new Exception("Empresa não encontrada para a API Key informada.");
+        }
+        return $empresa;
+    }
+
+    public function isEmpresaExistente($id) {
+        $existe = Empresas::where('id', '=', $id)->first();
+        if(!$existe) {
+            return throw new Exception("Empresa com ID $id não encontrada.");
+        }
+        else {
+            return $existe;
+        }
+    }
 }
