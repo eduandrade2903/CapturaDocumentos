@@ -4,7 +4,7 @@ use Adianti\Database\TRecord;
 
 class CollectionRequest extends TRecord
 {
-    const TABLENAME = 'collection_request';
+    const TABLENAME = 'collection_requests';
     const PRIMARYKEY= 'id';
     const IDPOLICY =  'max'; // {max, serial}
 
@@ -40,11 +40,26 @@ class CollectionRequest extends TRecord
         }
     }
 
-    public static function verificaCamposObrigatorios($data) {
-        if (empty($data['empresa_id']) || empty($data['usuario_id']) || empty($data['token_unico']) || empty($data['status'])) {
-            return false;
-        }
-        return true;
+
+    public function geraToken(){
+        $token = bin2hex(random_bytes(16));
+        $this->token_unico = hash('sha256', $token);
+        $this->data_criacao = date('Y-m-d H:i:s');
+        $this->data_expiracao = date('Y-m-d H:i:s', strtotime('+1 day')); // Token válido por 1 dia
+    }
+
+    public static function registra($empresaId, $usuarioId, $status = 'pendente') {
+        $coleta = new self();
+        $coleta->empresa_id = $empresaId;
+        $coleta->usuario_id = $usuarioId;
+        $coleta->status = $status;
+
+        $token = $coleta->geraToken();
+        $coleta->store();
+        return [
+            'model'       => $coleta,
+            'token_limpo' => $token
+        ];
     }
     
 }

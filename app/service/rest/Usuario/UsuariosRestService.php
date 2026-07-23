@@ -1,5 +1,6 @@
 <?php
 
+use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
@@ -48,20 +49,29 @@ class UsuariosRestService extends AdiantiRecordService
     }
 
 
-    public function create(array $request)
-    {
+    public function create(array $request)    {       
+        $headers = AdiantiCoreApplication::getHeaders();
+        $apiKey = $headers['api_key'] ?? null;
+
         try {
-            
             TTransaction::open('data');
-            $usuario = new Usuarios($request['id'] ?? NULL);
+            $empresa = Empresas::getEmpresaByApiKey($apiKey);
+            $empresa->isEmpresaExistente($empresa->id); // Verifica se a empresa existe antes de criar o usuário
+
+            $usuario = new Usuarios();
             $usuario->fromArray($request['data'] ?? []);
-            $usuario->verifica() ? $usuario->store() : throw new Exception('Campos obrigatórios não preenchidos'); // Chama o método verifica() para validar os campos obrigatórios
+            $usuario->store(); // Chama o método verifica() para validar os campos obrigatórios
+
+            
+            $coletaRegistrada = CollectionRequest::registra($empresa->id ?? null, $usuario->id ?? null, 'pendente');
+
             TTransaction::close();
             http_response_code(201);
             return [
                 'status' => 'success',
                 'message' => 'Usuário criado com sucesso',
-                'data' => $usuario->toArray()
+                'data' => $usuario->toArray(),
+                    'token' => [ 'token_unico' => $coletaRegistrada['model']->token_unico ]
             ];
 
         }catch (Exception $e) {

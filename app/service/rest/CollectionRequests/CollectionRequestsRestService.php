@@ -10,6 +10,10 @@ class CollectionRequestsRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'empresa_id', 'usuario_id', 'token_unico', 'status', 'data_criacao', 'data_expiracao'];
     // const REST_KEY      = 'public';
 
+    /**
+     *
+     * @param mixed $param
+     */
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
@@ -48,34 +52,34 @@ class CollectionRequestsRestService extends AdiantiRecordService
     }
 
 
-    public function create(array $request)
-    {
+    public static function create(array $request) {
+
         try{
             TTransaction::open('data');
 
-            $data = $request['data'] ?? [];
-            $collectionRequest = new CollectionRequest();
-            $collectionRequest::verificaCamposObrigatorios($request);          
-
-            
-            $collectionRequest->fromArray($data);
-            $collectionRequest->store();
+            // Chama a regra de negócio centralizada na Model!
+            $resultado = CollectionRequest::registrar(
+                $request['empresa_id'] ?? null,
+                $request['usuario_id'] ?? null,
+                $request['status']     ?? 'pendente'
+            );
 
             TTransaction::close();
 
             http_response_code(201);
+
+            // Monta o retorno com o token limpo
+            $dados = $resultado['model']->toArray();
+            $dados['token_unico'] = $resultado['token_limpo'];
+
             return [
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Solicitação de coleta criada com sucesso',
-                'data' => $collectionRequest->toArray()
+                'data'    => $dados
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
-            http_response_code(400);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+              throw new Exception("Erro ao criar solicitação de coleta: " . $e->getMessage());
         }
     }
 

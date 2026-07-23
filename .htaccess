@@ -187,6 +187,9 @@ RewriteRule ^empresas/([A-Za-z0-9]*)$ rest.php?class=EmpresasRestService&method=
 RewriteRule ^usuarios$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^usuarios/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
+RewriteRule ^collections$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collections/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied
 </FilesMatch>
