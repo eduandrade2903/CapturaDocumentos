@@ -37,13 +37,6 @@ class EmpresasRestService extends AdiantiRecordService
             case 'PUT':
                 return $this->update($param);
                 break;
-            case 'DELETE':
-                if (!empty($param['id'])) {
-                    return $this->delete($param);
-                } else {
-                    return $this->deleteAll($param);
-                }
-                break;
         }
     }
 
@@ -64,28 +57,25 @@ class EmpresasRestService extends AdiantiRecordService
                 throw new Exception('Todos os campos são obrigatórios.');
             }
 
+            $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
+
             $empresa = new Empresas();
             $empresa->fromArray($data);
-            $empresa->api_key = bin2hex(random_bytes(64)); // Generate a random API key
+            $empresa->api_key = hash('sha256', $chave_api); //Armazena no banco o hash da chave
             $empresa->data_cadastro = date('Y-m-d H:i:s');
-
             $empresa->store();
 
             TTransaction::close();
 
             http_response_code(201); // Set HTTP status code to 201 Created
             return [
-                'status' => 'success',
                 'message' => 'Empresa criada com sucesso',
-                'api_key' => $empresa->api_key
+                'api_key' => $chave_api
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500); // Set HTTP status code to 500 Internal Server Error
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+            return [ 'message' => $e->getMessage() ];
         }
     }
 
@@ -100,7 +90,7 @@ class EmpresasRestService extends AdiantiRecordService
             $headers  = AdiantiCoreApplication::getHeaders();
 
             TTransaction::open('data');
-            $empresa = Empresas::where('api_key', '=', $headers['api_key'])->first();
+            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
             TTransaction::close();
 
             if (!$empresa) {
@@ -109,19 +99,14 @@ class EmpresasRestService extends AdiantiRecordService
             }
 
             unset($empresa->id);
+            unset($empresa->api_key);
 
             http_response_code(200); // Set HTTP status code to 200 OK
-            return [
-                'status' => 'success',
-                'data' => $empresa->toArray()
-            ];
+            return [ 'empresa' => $empresa->toArray() ];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+            return [ 'message' => $e->getMessage() ];
         }
     }
 
@@ -138,7 +123,7 @@ class EmpresasRestService extends AdiantiRecordService
 
             TTransaction::open('data');
 
-            $empresa = Empresas::where('api_key', '=', $headers['api_key'])->first();
+            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
 
             if (!$empresa) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden
@@ -150,19 +135,14 @@ class EmpresasRestService extends AdiantiRecordService
             TTransaction::close();
 
             unset($empresa->id);
+            unset($empresa->api_key);
 
             http_response_code(200); // Set HTTP status code to 200 OK
-            return [
-                'status' => 'success',
-                'data' => $empresa->toArray()
-            ];
+            return [ 'empresa' => $empresa->toArray() ];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+            return [ 'message' => $e->getMessage() ];
         }
     }
 }
