@@ -67,6 +67,8 @@ class EmpresasRestService extends AdiantiRecordService
 
             TTransaction::close();
 
+            EmpresasService::enviaApiEmailEmpresa($empresa, $chave_api);
+
             http_response_code(201); // Set HTTP status code to 201 Created
             return [
                 'message' => 'Empresa criada com sucesso',
