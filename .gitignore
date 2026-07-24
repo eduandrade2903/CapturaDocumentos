@@ -1,10 +1,10 @@
 /vendor
 /app/files
-/.vscode
 /vendor
 /tmp
 .env
 app/config/certs/*.key
 app/config/certs/*.pem
 app/config/certs/*.crt
+/docker/init
 

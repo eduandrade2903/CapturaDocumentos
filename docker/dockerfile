@@ -1,0 +1,47 @@
+FROM php:8.4-apache
+
+RUN apt-get update && apt-get install -y \
+    libfreetype-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libzip-dev \
+    libicu-dev \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libz-dev \
+    libonig-dev \
+    libxslt1-dev \
+    libsqlite3-dev \
+    libsodium-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+    pdo_mysql \
+    gd \
+    mbstring \
+    zip \
+    intl \
+    xml \
+    bcmath \
+    soap \
+    sockets \
+    opcache \
+    fileinfo \
+    exif \
+    mysqli \
+    xsl
+
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+
+RUN a2enmod rewrite
+
+COPY php.ini /usr/local/etc/php/conf.d/custom.ini
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+ARG USER_ID=${USER_ID}
+RUN usermod -u ${USER_ID} www-data && groupmod -g ${USER_ID} www-data
+
+WORKDIR /var/www/html
