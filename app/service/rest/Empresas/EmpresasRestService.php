@@ -48,7 +48,7 @@ class EmpresasRestService extends AdiantiRecordService
     public function create(array $request): array
     {
         try {
-            TTransaction::open('data');
+            
 
             $data = $request['data'] ?? [];
 
@@ -59,12 +59,44 @@ class EmpresasRestService extends AdiantiRecordService
 
             $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
 
+            TTransaction::open('data');
             $empresa = new Empresas();
             $empresa->fromArray($data);
             $empresa->api_key = hash('sha256', $chave_api); //Armazena no banco o hash da chave
             $empresa->data_cadastro = date('Y-m-d H:i:s');
             $empresa->store();
+            TTransaction::close();
 
+            TTransaction::open('permission');
+            $unidade = new SystemUnit;
+            $unidade->name = $empresa->razao_social;
+            $unidade->custom_code = $empresa->id;
+            $unidade->store();
+
+            $systemUser = new SystemUser;
+            $systemUser->login = $empresa->email;
+            $systemUser->name = $empresa->razao_social;
+            $systemUser->email = $empresa->email;
+            $systemUser->password = SystemUser::passwordHash('Abcd@1234');
+            $systemUser->frontpage_id = '30';
+            $systemUser->active = 'Y';
+            $systemUser->store();
+
+            $systemUserUnit = new SystemUserUnit;
+            $systemUserUnit->system_user_id = $systemUser->id;
+            $systemUserUnit->system_unit_id = $unidade->id;
+            $systemUserUnit->store();
+
+            $systemUserGroup = new SystemUserGroup;
+            $systemUserGroup->system_user_id = $systemUser->id;
+            $systemUserGroup->system_group_id = '4';
+            $systemUserGroup->store();
+
+            TTransaction::close();
+
+            TTransaction::open('data');
+            $empresa->system_user_id = $systemUser->id;
+            $empresa->store();
             TTransaction::close();
 
             EmpresasService::enviaApiEmailEmpresa($empresa, $chave_api);
