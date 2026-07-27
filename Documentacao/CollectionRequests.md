@@ -8,12 +8,12 @@ O serviço **Solicitações de Coleta** (`CollectionRequests`) gerencia o ciclo 
 
 ## 📌 Sumário das Rotas
 
-| Verbo HTTP | Método | Endpoint / URL | Requer API Key? | Descrição |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `create` | `/restp.php?class=CollectionRequestsRestService&method=handle` | ❌ Não | Cria manualmente uma solicitação de coleta e token temporário. |
-| `GET` | `getById` / `loadAll` | `/restp.php?class=CollectionRequestsRestService&method=handle` | ❌ Não | Consulta solicitação por `id` ou lista todas. |
-| `PUT` | `store` | `/restp.php?class=CollectionRequestsRestService&method=handle` | ❌ Não | Atualiza os dados de uma solicitação. |
-| `DELETE` | `delete` / `deleteAll` | `/restp.php?class=CollectionRequestsRestService&method=handle` | ❌ Não | Exclui solicitação por `id` ou em lote. |
+| Verbo HTTP  | Método               | Endpoint / URL               | Requer API Key?   | Descrição |
+| :---        | :---                 | :---                         | :---              | :---      |
+| `POST`      | `create`             | `/collections`               | ✅ Sim (`Header`) | Cria manualmente uma solicitação de coleta e token temporário. |
+| `GET`       | `getById`/`loadAll`  | `/collections/{id}`          | ✅ Sim (`Header`) | Consulta solicitação por `id` ou lista todas. |
+| `PUT`       | `store`              | `/collections/{id}`          | ✅ Sim (`Header`) | Atualiza os dados de uma solicitação. |
+| `DELETE`    | `delete`/`deleteAll` | `/collections/{id}`          | ✅ Sim (`Header`) | Exclui solicitação por `id` ou em lote. |
 
 ---
 
@@ -32,9 +32,11 @@ Gera uma nova solicitação de coleta especificando a empresa e o usuário.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=CollectionRequestsRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/collections`
 - **Verbo**: `POST`
 - **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
   - `Content-Type: application/json`
 
 ### Body (JSON)
@@ -49,11 +51,11 @@ Gera uma nova solicitação de coleta especificando a empresa e o usuário.
 
 ### Parâmetros do Corpo
 
-| Campo | Tipo | Obrigatório? | Descrição |
-| :--- | :--- | :--- | :--- |
-| `empresa_id` | `integer` | ✅ Sim | ID da empresa cadastrada no sistema. |
-| `usuario_id` | `integer` | ✅ Sim | ID do usuário cadastrado no sistema. |
-| `status` | `string` | ❌ Não | Status inicial da solicitação (Padrão: `"pendente"`). |
+| Campo          | Tipo      | Obrigatório?     | Descrição              |
+| :---           | :---      | :---             | :---                   |
+| `empresa_id`   | `integer` | ✅ Sim           | ID da empresa cadastrada no sistema. |
+| `usuario_id`   | `integer` | ✅ Sim           | ID do usuário cadastrado no sistema. |
+| `status`       | `string`  | ❌ Não           | Status inicial da solicitação (Padrão: `"pendente"`). |
 
 ---
 
@@ -93,8 +95,12 @@ Gera uma nova solicitação de coleta especificando a empresa e o usuário.
 
 ### Consultar Por ID
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=CollectionRequestsRestService&method=handle&id=18`
+- **URL**: `https://seu-dominio.com.br/collections/{id}`
 - **Verbo**: `GET`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
+  - `Content-Type: application/json`
 
 #### Resposta de Sucesso (`200 OK`)
 
@@ -122,8 +128,12 @@ Gera uma nova solicitação de coleta especificando a empresa e o usuário.
 
 Exclui uma solicitação de coleta específica pelo ID.
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=CollectionRequestsRestService&method=handle&id=18`
+- **URL**: `https://seu-dominio.com.br/collections/{id}`
 - **Verbo**: `DELETE`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
+  - `Content-Type: application/json`
 
 ---
 
@@ -136,10 +146,14 @@ const axios = require('axios');
 
 async function criarSolicitacaoColeta() {
   try {
-    const response = await axios.post('https://seu-dominio.com.br/restp.php?class=CollectionRequestsRestService&method=handle', {
+    const response = await axios.post('https://seu-dominio.com.br/collections', {
       empresa_id: 1,
       usuario_id: 42,
-      status: 'pendente'
+      status: 'pendente',
+      headers: {
+        'api_key': 'SUA_CHAVE_API_AQUI',
+        'Authorization': 'Bas.. 76ast'
+      }
     });
 
     console.log('Coleta Criada:', response.data);
