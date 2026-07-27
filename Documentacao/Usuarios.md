@@ -8,12 +8,12 @@ O serviço **Usuários** permite o gerenciamento de clientes/titulares que neces
 
 ## 📌 Sumário das Rotas
 
-| Verbo HTTP | Método | Endpoint / URL | Requer API Key? | Descrição |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `create` | `/restp.php?class=UsuariosRestService&method=handle` | ✅ Sim (`Header`) | Cria um novo usuário e gera solicitação de coleta automática. |
-| `GET` | `getById` / `loadAll` | `/restp.php?class=UsuariosRestService&method=handle` | ❌ Não | Busca usuário por `id` ou lista todos os usuários. |
-| `PUT` | `update` | `/restp.php?class=UsuariosRestService&method=handle` | ❌ Não | Atualiza dados de um usuário existente pelo `id`. |
-| `DELETE` | `delete` / `deleteAll` | `/restp.php?class=UsuariosRestService&method=handle` | ❌ Não | Remove um usuário por `id` ou todos em lote. |
+| Verbo HTTP  | Método                  | Endpoint / URL      | Requer API Key?   | Descrição                                                       |
+| :---        | :---                    | :---                | :---              | :---                                                            |
+| `POST`      | `create`                | `/usuarios`         | ✅ Sim (`Header`) | Cria um novo usuário e gera solicitação de coleta automática.  |
+| `GET`       | `getById`/`loadAll`     | `/usuarios`         | ✅ Sim (`Header`) | Busca usuário por `id` ou lista todos os usuários.              |
+| `PUT`       | `update`                | `/usuarios`         | ✅ Sim (`Header`) | Atualiza dados de um usuário existente pelo `id`.               |
+| `DELETE`    | `delete`/`deleteAll`    | `/usuarios`         | ✅ Sim (`Header`) | Remove um usuário por `id` ou todos em lote.                    |
 
 ---
 
@@ -26,10 +26,11 @@ Cadastra um novo usuário para a empresa solicitante e dispara a criação da so
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/usuarios`
 - **Verbo**: `POST`
 - **Cabeçalhos**:
   - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
   - `Content-Type: application/json`
 
 ### Body (JSON)
@@ -47,12 +48,12 @@ Cadastra um novo usuário para a empresa solicitante e dispara a criação da so
 
 ### Parâmetros do Corpo (`data`)
 
-| Campo | Tipo | Obrigatório? | Descrição |
-| :--- | :--- | :--- | :--- |
-| `nome_completo` | `string` | ✅ Sim | Nome completo do usuário. |
-| `cpf` | `string` | ✅ Sim | CPF do usuário (deve ser único no sistema). |
-| `email` | `string` | ❌ Não | E-mail do usuário. |
-| `telefone` | `string` | ❌ Não | Telefone com DDD do usuário. |
+| Campo           | Tipo     | Obrigatório?   | Descrição                                                    |
+| :---            | :---     | :---           | :---                                                         |
+| `nome_completo` | `string` | ✅ Sim         | Nome completo do usuário.                                    |
+| `cpf`           | `string` | ✅ Sim         | CPF do usuário (deve ser único no sistema).                  |
+| `email`         | `string` | ✅ Sim         | E-mail do usuário.                                           |
+| `telefone`      | `string` | ✅ Sim         | Telefone com DDD do usuário.                                 |
 
 ---
 
@@ -95,7 +96,7 @@ Ocorre quando o CPF já está cadastrado ou campos obrigatórios faltam:
 
 ### Buscar por ID Específico
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle&id=42`
+- **URL**: `https://seu-dominio.com.br/usuarios/{id}`
 - **Verbo**: `GET`
 
 #### Resposta de Sucesso (`200 OK`)
@@ -118,7 +119,7 @@ Ocorre quando o CPF já está cadastrado ou campos obrigatórios faltam:
 
 ### Listar Todos os Usuários
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/usuarios`
 - **Verbo**: `GET`
 
 ---
@@ -155,7 +156,7 @@ Exclui um usuário do sistema.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle&id=42`
+- **URL**: `https://seu-dominio.com.br/usuarios/{id}`
 - **Verbo**: `DELETE`
 
 ---
@@ -167,7 +168,7 @@ Exclui um usuário do sistema.
 ```php
 <?php
 
-$url = "https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle";
+$url = "https://seu-dominio.com.br/usuarios";
 $apiKey = "SUA_CHAVE_API_AQUI";
 
 $payload = json_encode([
