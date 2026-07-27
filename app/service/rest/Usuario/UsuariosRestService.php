@@ -54,6 +54,10 @@ class UsuariosRestService extends AdiantiRecordService
         $apiKey = $headers['api_key'] ?? null;
 
         try {
+            if(!$apiKey || empty($apiKey)) {
+                throw new Exception("API Key não fornecida.");
+            }
+
             TTransaction::open('data');
             $empresa = Empresas::getEmpresaByApiKey($apiKey);
             $empresa->isEmpresaExistente($empresa->id); // Verifica se a empresa existe antes de criar o usuário
