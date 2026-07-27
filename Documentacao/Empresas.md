@@ -8,11 +8,11 @@ O serviço **Empresas** é responsável pelo cadastro inicial da empresa parceir
 
 ## 📌 Sumário das Rotas
 
-| Verbo HTTP | Método | Endpoint / URL | Requer API Key? | Descrição |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `create` | `/restp.php?class=EmpresasRestService&method=handle` | ❌ Não | Cadastra nova empresa e gera a `api_key`. |
-| `GET` | `getByKey` | `/restp.php?class=EmpresasRestService&method=handle` | ✅ Sim (`Header`) | Retorna os dados da empresa cadastrada. |
-| `PUT` | `update` | `/restp.php?class=EmpresasRestService&method=handle` | ✅ Sim (`Header`) | Atualiza dados cadastrais da empresa. |
+| Verbo HTTP | Método     | Endpoint / URL | Requer API Key?    | Descrição          |
+| :---       | :---       | :---           | :---               | :---               |
+| `POST`     | `create`   | `/empresas`    | ❌ Não             | Cadastra nova empresa e gera a `api_key`. |
+| `GET`      | `getByKey` | `/empresas`    | ✅ Sim (`Header`)  | Retorna os dados da empresa cadastrada. |
+| `PUT`      | `update`   | `/empresas`    | ✅ Sim (`Header`)  | Atualiza dados cadastrais da empresa.   |
 
 ---
 
@@ -25,9 +25,10 @@ Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o 
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=EmpresasRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/empresas`
 - **Verbo**: `POST`
 - **Cabeçalhos**:
+  - `Authorization: Bas... a8079syd78...`
   - `Content-Type: application/json`
 
 ### Body (JSON)
@@ -47,14 +48,14 @@ Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o 
 
 ### Parâmetros do Corpo (`data`)
 
-| Campo | Tipo | Obrigatório? | Descrição |
-| :--- | :--- | :--- | :--- |
-| `razao_social` | `string` | ✅ Sim | Razão social completa da empresa. |
-| `cnpj` | `string` | ✅ Sim | CNPJ da empresa (com ou sem pontuação). |
-| `nome_contato` | `string` | ✅ Sim | Nome do responsável pelo contato. |
-| `email` | `string` | ✅ Sim | E-mail principal de contato e login de acesso. |
-| `telefone` | `string` | ❌ Não | Telefone comercial para contato. |
-| `webhook_url` | `string` | ❌ Não | URL HTTP(S) onde os eventos de Webhook serão entregues. |
+| Campo          | Tipo     | Obrigatório?    | Descrição                                               |
+| :---           | :---     | :---            | :---                                                    |
+| `razao_social` | `string` | ✅ Sim          | Razão social completa da empresa.                       |
+| `cnpj`         | `string` | ✅ Sim          | CNPJ da empresa (com ou sem pontuação).                 |
+| `nome_contato` | `string` | ✅ Sim          | Nome do responsável pelo contato.                       |
+| `email`        | `string` | ✅ Sim          | E-mail principal de contato e login de acesso.          |
+| `telefone`     | `string` | ❌ Não          | Telefone comercial para contato.                        |
+| `webhook_url`  | `string` | ❌ Não          | URL HTTP(S) onde os eventos de Webhook serão entregues. |
 
 ---
 
@@ -65,7 +66,7 @@ Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o 
   "status": "success",
   "data": {
     "message": "Empresa criada com sucesso",
-    "api_key": "4f9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b"
+    "api_key": "4f9..."
   }
 }
 ```
@@ -89,9 +90,11 @@ Obtém as informações cadastrais da empresa associada à `api_key` enviada no 
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=EmpresasRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/empresas`
 - **Verbo**: `GET`
 - **Cabeçalhos**:
+  - `Content-Type: application/json`
+  - `Authorization: Bas.. 98734huh...`
   - `api_key: SUA_CHAVE_API_AQUI`
 
 ---
@@ -135,11 +138,12 @@ Atualiza as informações cadastrais da empresa associada à `api_key`.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=EmpresasRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/empresas`
 - **Verbo**: `PUT`
 - **Cabeçalhos**:
   - `api_key: SUA_CHAVE_API_AQUI`
   - `Content-Type: application/json`
+  - `Authorization: Bas.. 98734huh...`
 
 ### Body (JSON)
 
@@ -182,7 +186,7 @@ Atualiza as informações cadastrais da empresa associada à `api_key`.
 ### Exemplo em cURL (Cadastro de Empresa)
 
 ```bash
-curl -X POST "https://seu-dominio.com.br/restp.php?class=EmpresasRestService&method=handle" \
+curl -X POST "https://seu-dominio.com.br/empresas" \
      -H "Content-Type: application/json" \
      -d '{
            "data": {
@@ -200,9 +204,11 @@ curl -X POST "https://seu-dominio.com.br/restp.php?class=EmpresasRestService&met
 
 ```javascript
 async function buscarDadosEmpresa(apiKey) {
-  const response = await fetch("https://seu-dominio.com.br/restp.php?class=EmpresasRestService&method=handle", {
+  const response = await fetch("https://seu-dominio.com.br/empresas", {
     method: "GET",
     headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bas.. 98734huh...",
       "api_key": apiKey
     }
   });
