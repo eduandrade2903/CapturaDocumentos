@@ -1,5 +1,6 @@
 <?php
 
+use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
@@ -54,7 +55,14 @@ class CollectionRequestsRestService extends AdiantiRecordService
 
     public static function create(array $request) {
 
+        $headers = AdiantiCoreApplication::getHeaders();
+        $apiKey = $headers['api_key'] ?? null;
+
         try{
+
+            if(!$apiKey || empty($apiKey)) {
+                throw new Exception("API Key não fornecida.");
+            }
             TTransaction::open('data');
 
             // Chama a regra de negócio centralizada na Model!
