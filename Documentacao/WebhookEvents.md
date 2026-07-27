@@ -8,9 +8,9 @@ O serviço **Eventos de Webhook** (`WebhookEvents`) permite que as empresas parc
 
 ## 📌 Sumário das Rotas
 
-| Verbo HTTP | Método | Endpoint / URL | Requer API Key? | Descrição |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `loadWebhookEvents` | `/restp.php?class=WebhookEventsRestService&method=handle` | ✅ Sim (`Header`) | Lista os eventos de Webhook associados à empresa autenticada. |
+| Verbo HTTP  | Método              | Endpoint / URL    | Requer API Key?   | Descrição                              |
+| :---        | :---                | :---              | :---              | :---                                   |
+| `GET`       | `loadWebhookEvents` | `/webhook-events` | ✅ Sim (`Header`) | Lista os eventos de Webhook associados à empresa autenticada. |
 
 ---
 
@@ -20,10 +20,12 @@ Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada 
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=WebhookEventsRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/webhook-events`
 - **Verbo**: `GET`
 - **Cabeçalhos**:
   - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
+  - `Content-Type: application/json`
 
 ---
 
@@ -59,15 +61,15 @@ Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada 
 
 ### Campos do Objeto de Evento
 
-| Campo | Tipo | Descrição |
-| :--- | :--- | :--- |
-| `id` | `string` / `integer` | Identificador único do evento de webhook. |
-| `empresa_id` | `string` / `integer` | ID da empresa destinatária. |
-| `tipo_evento` | `string` | Categoria/tipo do evento disparado (ex: `document.uploaded`). |
-| `payload` | `string` (JSON) | Dados brutos enviados no corpo da requisição HTTP do Webhook. |
-| `status_envio` | `string` | Status do envio (`sucesso`, `falha`, `pendente`). |
-| `tentativas` | `string` / `integer` | Quantidade de tentativas de entrega efetuadas pelo servidor. |
-| `criado_em` | `string` | Data e hora em que o evento foi registrado (`YYYY-MM-DD HH:MM:SS`). |
+| Campo           | Tipo                  | Descrição                                                           |
+| :---            | :---                  | :---                                                                |
+| `id`            | `string` / `integer`  | Identificador único do evento de webhook.                           |
+| `empresa_id`    | `string` / `integer`  | ID da empresa destinatária.                                         |
+| `tipo_evento`   | `string`              | Categoria/tipo do evento disparado (ex: `document.uploaded`).       |
+| `payload`       | `string` (JSON)       | Dados brutos enviados no corpo da requisição HTTP do Webhook.       |
+| `status_envio`  | `string`              | Status do envio (`sucesso`, `falha`, `pendente`).                   |
+| `tentativas`    | `string` / `integer`  | Quantidade de tentativas de entrega efetuadas pelo servidor.        |
+| `criado_em`     | `string`              | Data e hora em que o evento foi registrado (`YYYY-MM-DD HH:MM:SS`). |
 
 ---
 
@@ -103,6 +105,8 @@ import requests
 url = "https://seu-dominio.com.br/restp.php?class=WebhookEventsRestService&method=handle"
 headers = {
     "api_key": "SUA_CHAVE_API_AQUI"
+    "Authorization: Bas.. 76ast",
+    "Content-Type": "application/json"
 }
 
 response = requests.get(url, headers=headers)
