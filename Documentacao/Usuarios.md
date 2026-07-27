@@ -98,6 +98,10 @@ Ocorre quando o CPF já está cadastrado ou campos obrigatórios faltam:
 
 - **URL**: `https://seu-dominio.com.br/usuarios/{id}`
 - **Verbo**: `GET`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
+  - `Content-Type: application/json`
 
 #### Resposta de Sucesso (`200 OK`)
 
@@ -130,9 +134,11 @@ Atualiza os dados de um usuário pelo seu ID.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/restp.php?class=UsuariosRestService&method=handle`
+- **URL**: `https://seu-dominio.com.br/usuarios/{id}`
 - **Verbo**: `PUT`
 - **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
   - `Content-Type: application/json`
 
 ### Body (JSON)
@@ -158,6 +164,10 @@ Exclui um usuário do sistema.
 
 - **URL**: `https://seu-dominio.com.br/usuarios/{id}`
 - **Verbo**: `DELETE`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Bas.. 76ast`
+  - `Content-Type: application/json`
 
 ---
 
@@ -170,6 +180,7 @@ Exclui um usuário do sistema.
 
 $url = "https://seu-dominio.com.br/usuarios";
 $apiKey = "SUA_CHAVE_API_AQUI";
+$authorization = "Bas.. 76ast";
 
 $payload = json_encode([
     "data" => [
@@ -186,7 +197,8 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Content-Type: application/json",
-    "api_key: " . $apiKey
+    "api_key: " . $apiKey,
+    "Authorization: " . $authorization
 ]);
 
 $response = curl_exec($ch);
