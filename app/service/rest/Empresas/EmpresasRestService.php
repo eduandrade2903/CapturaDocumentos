@@ -14,8 +14,7 @@ class EmpresasRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'razao_social', 'cnpj', 'api_key', 'nome_contato', 'email', 'telefone', 'webhook_url', 'data_cadastro'];
     // const REST_KEY      = 'public';
 
-    private string $API_KEY;
-    private string $AUTHORIZATION;
+    protected string $API_KEY;
 
     /**
      * @description Endpoint principal para requisições REST
@@ -28,8 +27,9 @@ class EmpresasRestService extends AdiantiRecordService
             $method = strtoupper($_SERVER['REQUEST_METHOD']);
             $headers = AdiantiCoreApplication::getHeaders();
             $this->API_KEY = $headers['api_key'] ?? null;
-            $this->AUTHORIZATION = $headers['authorization'] ?? null;
 
+            if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+                
             unset($param['class']);
             unset($param['method']);
 
