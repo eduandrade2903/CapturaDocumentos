@@ -14,6 +14,9 @@ class EmpresasRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'razao_social', 'cnpj', 'api_key', 'nome_contato', 'email', 'telefone', 'webhook_url', 'data_cadastro'];
     // const REST_KEY      = 'public';
 
+    private string $API_KEY;
+    private string $AUTHORIZATION;
+
     /**
      * @description Endpoint principal para requisições REST
      * @param array $param
@@ -21,22 +24,31 @@ class EmpresasRestService extends AdiantiRecordService
      */
     public function handle($param)
     {
-        $method = strtoupper($_SERVER['REQUEST_METHOD']);
+        try {
+            $method = strtoupper($_SERVER['REQUEST_METHOD']);
+            $headers = AdiantiCoreApplication::getHeaders();
+            $this->API_KEY = $headers['api_key'] ?? null;
+            $this->AUTHORIZATION = $headers['authorization'] ?? null;
 
-        unset($param['class']);
-        unset($param['method']);
+            unset($param['class']);
+            unset($param['method']);
 
 
-        switch ($method) {
-            case 'GET':
-                return $this->getByKey($param);
-                break;
-            case 'POST':
-                return $this->create($param);
-                break;
-            case 'PUT':
-                return $this->update($param);
-                break;
+            switch ($method) {
+                case 'GET':
+                    return $this->getByKey($param);
+                    break;
+                case 'POST':
+                    return $this->create($param);
+                    break;
+                case 'PUT':
+                    return $this->update($param);
+                    break;
+            }
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(404); // Set HTTP status code to 404 Not Found
+            return [ 'message' => $e->getMessage() ];
         }
     }
 
@@ -121,10 +133,8 @@ class EmpresasRestService extends AdiantiRecordService
     public function getByKey(array $request): array
     {
         try {
-            $headers  = AdiantiCoreApplication::getHeaders();
-
             TTransaction::open('data');
-            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
             TTransaction::close();
 
             if (!$empresa) {
@@ -152,12 +162,11 @@ class EmpresasRestService extends AdiantiRecordService
     public function update(array $request): array
     {
         try {
-            $headers = AdiantiCoreApplication::getHeaders();
             $data = $request['data'] ?? [];
 
             TTransaction::open('data');
 
-            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
 
             if (!$empresa) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden
