@@ -10,10 +10,16 @@ class WebhookEventsRestService extends AdiantiRecordService
     const ACTIVE_RECORD = 'WebhookEvents';
     const ATTRIBUTES    = ['id', 'empresa_id', 'tipo_evento', 'payload', 'status_envio', 'tentativas', 'criado_em'];
 
+    protected string $API_KEY;
+
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
+        $headers = AdiantiCoreApplication::getHeaders();
+        $this->API_KEY = $headers['api_key'] ?? null;
         
+        if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+
         unset($param['class']);
         unset($param['method']);
         
@@ -27,11 +33,9 @@ class WebhookEventsRestService extends AdiantiRecordService
     }
 
     private function loadWebhookEvents($param) {
-        try {
-            $headers = AdiantiCoreApplication::getHeaders();
-            
+        try {            
             TTransaction::open('data');
-            $empresa = Empresas::where('api_key', '=', $headers['api_key'])->first();
+            $empresa = Empresas::where('api_key', '=', $this->API_KEY)->first();
 
             if(is_null($empresa)) {
                 http_response_code(403);
