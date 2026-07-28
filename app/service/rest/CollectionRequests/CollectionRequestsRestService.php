@@ -11,6 +11,8 @@ class CollectionRequestsRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'empresa_id', 'usuario_id', 'token_unico', 'status', 'data_criacao', 'data_expiracao'];
     // const REST_KEY      = 'public';
 
+    protected string $API_KEY;
+
     /**
      *
      * @param mixed $param
@@ -18,7 +20,11 @@ class CollectionRequestsRestService extends AdiantiRecordService
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
+        $headers = AdiantiCoreApplication::getHeaders();
+        $this->API_KEY = $headers['api_key'] ?? null;
         
+        if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+
         unset($param['class']);
         unset($param['method']);
         
@@ -54,15 +60,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
 
 
     public static function create(array $request) {
-
-        $headers = AdiantiCoreApplication::getHeaders();
-        $apiKey = $headers['api_key'] ?? null;
-
         try{
-
-            if(!$apiKey || empty($apiKey)) {
-                throw new Exception("API Key não fornecida.");
-            }
             TTransaction::open('data');
 
             // Chama a regra de negócio centralizada na Model!
