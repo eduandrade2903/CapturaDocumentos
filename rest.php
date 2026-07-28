@@ -1,4 +1,18 @@
 <?php
+// Permite o acesso de qualquer origem. Se quiser restringir, troque '*' por 'http://localhost:4200'
+header("Access-Control-Allow-Origin: http://localhost:4200");
+
+// Define os métodos HTTP permitidos
+header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
+
+// Define os cabeçalhos que o frontend pode enviar (como tokens de autenticação)
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Api-Key");
+
+// Intercepta a requisição preflight e retorna sucesso imediato sem carregar o resto do framework
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 header('Content-Type: application/json; charset=utf-8');
 
 // initialization script
