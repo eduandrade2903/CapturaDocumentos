@@ -1,4 +1,8 @@
 RewriteEngine On
+
+# Swagger UI Route
+RewriteRule ^swagger$ docs/swagger/index.html [NC,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
