@@ -89,9 +89,9 @@
                 <icon></icon>
                 <action>EmpresasPage</action>
             </menuitem>
-            <menuitem label='Common page 2'>
+            <menuitem label='Usuarios'>
                 <icon></icon>
-                <action>CommonPage</action>
+                <action>UsuariosPage</action>
             </menuitem>
             <menuitem label='Common page 3'>
                 <icon></icon>
