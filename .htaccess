@@ -196,6 +196,10 @@ RewriteRule ^usuarios/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=
 RewriteRule ^collections$ rest.php?class=CollectionRequestsRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^collections/([A-Za-z0-9]*)$ rest.php?class=CollectionRequestsRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
+RewriteRule ^tipoDocumentos$ rest.php?class=DocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+
+RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied
 </FilesMatch>

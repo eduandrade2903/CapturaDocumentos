@@ -17,7 +17,7 @@ class UsuariosRestService extends AdiantiRecordService
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['api_key'] ?? null;
+        $this->API_KEY = $headers['Api-Key'] ?? null;
 
         if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
 
@@ -69,13 +69,17 @@ class UsuariosRestService extends AdiantiRecordService
             TTransaction::open('data');
             $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
             $empresa->isEmpresaExistente($empresa->id); // Verifica se a empresa existe antes de criar o usuário
-
             $usuario = new Usuarios();
             $usuario->fromArray($request['data'] ?? []);
             $usuario->store(); // Chama o método verifica() para validar os campos obrigatórios
 
             
             $coletaRegistrada = CollectionRequest::registra($empresa->id ?? null, $usuario->id ?? null, 'pendente');
+            
+            if(empty($request['data']['tipos_documentos'])) throw new Exception("Nenhum tipo de documento foi informado para o usuário.");
+
+            CollectionRequestDocumentos::criaCollectionDocumento($coletaRegistrada['model']->id, $request['data']['tipos_documentos']);
+            
 
             TTransaction::close();
             http_response_code(201);
