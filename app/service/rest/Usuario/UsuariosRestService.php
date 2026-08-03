@@ -23,6 +23,14 @@ class UsuariosRestService extends AdiantiRecordService
 
         unset($param['class']);
         unset($param['method']);
+
+        if (isset($param['filters']) && is_string($param['filters'])) {
+            $decodedFilters = json_decode($param['filters'], true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedFilters)) {
+                $param['filters'] = $decodedFilters;
+            }
+        }
         
         
         switch( $method )

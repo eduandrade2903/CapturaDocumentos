@@ -11,9 +11,9 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost/rest.php
+  - url: http://localhost:8080/
     description: Servidor de Desenvolvimento Local (Via rest.php)
-  - url: http://localhost/restp.php
+  - url: http://localhost:8080/
     description: Servidor de Desenvolvimento Local (Via restp.php - público para registros baseados em Active Record)
 
 security:
@@ -777,9 +777,12 @@ paths:
 components:
   securitySchemes:
     basicAuth:
-      type: http
-      scheme: basic
-      description: Autenticação Básica do Framework Adianti (`REST_KEY` global da aplicação configurada em `application.php`).
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Autenticação de gateway do framework. Insira o valor completo no formato exato: `Basic <REST_KEY>` (em texto claro, sem codificação Base64).
+        Exemplo: `Basic minha_rest_key_aqui`
     bearerAuth:
       type: http
       scheme: bearer
@@ -830,15 +833,12 @@ components:
       in: query
       required: false
       description: |
-        Filtros estruturados do Adianti Framework. Enviado como um array de filtros, onde cada filtro é um array contendo: `[campo, operador, valor]`.
-        Exemplo URL query string: `?filters[0][0]=status&filters[0][1]==&filters[0][2]=pendente`
+        Filtros estruturados para listagem. Pode ser enviado de duas formas:
+        1. Como string JSON representando o array de filtros (ex: `[["status", "=", "pendente"]]` ou `["status", "=", "pendente"]`).
+        2. Formato tradicional de array PHP de query string (ex: `filters[0][0]=status&filters[0][1]==&filters[0][2]=pendente`).
       schema:
-        type: array
-        items:
-          type: array
-          items:
-            type: string
-        example: [["status", "=", "pendente"]]
+        type: string
+        example: '[["status", "=", "pendente"]]'
 
   schemas:
     ErrorResponse:
