@@ -7,7 +7,7 @@ use Adianti\Service\AdiantiRecordService;
 class CollectionRequestsRestService extends AdiantiRecordService
 {
     const DATABASE      = 'data';
-    const ACTIVE_RECORD = 'CollectionRequests';
+    const ACTIVE_RECORD = 'CollectionRequest';
     const ATTRIBUTES    = ['id', 'empresa_id', 'usuario_id', 'token_unico', 'status', 'data_criacao', 'data_expiracao'];
     // const REST_KEY      = 'public';
 
@@ -27,6 +27,22 @@ class CollectionRequestsRestService extends AdiantiRecordService
 
         unset($param['class']);
         unset($param['method']);
+
+        if (isset($param['filters']) && is_string($param['filters'])) {
+            $decodedFilters = json_decode($param['filters'], true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedFilters)) {
+                
+                // Verifica se o array possui itens e se o primeiro item NÃO é um array.
+                // Se não for, significa que recebemos ["campo", "=", "valor"]
+                // Então forçamos virar bidimensional: [["campo", "=", "valor"]]
+                if (!empty($decodedFilters) && !is_array(reset($decodedFilters))) {
+                    $decodedFilters = [$decodedFilters];
+                }
+                
+                $param['filters'] = $decodedFilters;
+            }
+        }
         
         
         switch( $method )
