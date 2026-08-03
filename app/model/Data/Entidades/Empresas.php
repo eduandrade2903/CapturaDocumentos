@@ -26,7 +26,7 @@ class Empresas extends TRecord {
         if (empty($apiKey)) {
             throw new Exception("API Key não fornecida.");
         }
-
+        $apiKey = hash('sha256', $apiKey);
         $empresa = Empresas::where('api_key', '=', $apiKey)->first();
 
         if (!$empresa) {

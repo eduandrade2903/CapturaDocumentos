@@ -11,9 +11,9 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost/rest.php
+  - url: http://localhost:8080/
     description: Servidor de Desenvolvimento Local (Via rest.php)
-  - url: http://localhost/restp.php
+  - url: http://localhost:8080/
     description: Servidor de Desenvolvimento Local (Via restp.php - público para registros baseados em Active Record)
 
 security:
@@ -777,9 +777,12 @@ paths:
 components:
   securitySchemes:
     basicAuth:
-      type: http
-      scheme: basic
-      description: Autenticação Básica do Framework Adianti (`REST_KEY` global da aplicação configurada em `application.php`).
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Autenticação de gateway do framework. Insira o valor completo no formato exato: `Basic <REST_KEY>` (em texto claro, sem codificação Base64).
+        Exemplo: `Basic minha_rest_key_aqui`
     bearerAuth:
       type: http
       scheme: bearer

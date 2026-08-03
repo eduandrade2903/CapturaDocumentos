@@ -157,7 +157,7 @@ RewriteRule ^system-wiki-search$ index.php?class=SystemWikiSearchList&method=onR
 RewriteRule ^xhr-system-wiki-search$ engine.php?class=SystemWikiSearchList&method=onReload&%{QUERY_STRING} [NC]
 
 #AUTH routes
-RewriteRule ^auth/([A-Za-z0-9]*)/([A-Za-z0-9]*)$ rest.php?class=ApplicationAuthenticationRestService&method=getToken&login=$1&password=$2&%{QUERY_STRING} [NC]
+RewriteRule ^auth/([A-Za-z0-9@._%-]+)/([^/]+)$ rest.php?class=ApplicationAuthenticationRestService&method=getToken&login=$1&password=$2&%{QUERY_STRING} [NC]
 
 #Application specific routes
 RewriteRule ^contact-edit$ index.php?class=ContactForm&method=onEdit&%{QUERY_STRING} [NC]
