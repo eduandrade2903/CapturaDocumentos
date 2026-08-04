@@ -135,24 +135,13 @@ class CollectionRequestsRestService extends AdiantiRecordService
     public function getByTokenUnico($param) {
         try {
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+            $collectionRequest = CollectionRequest::getByToken($param['token_unico']);
 
-            $empresa_nome = $collectionRequest->empresa->razao_social;
-            $usuario_nome = $collectionRequest->usuario->nome_completo;
-
-            unset($collectionRequest->token_unico);
-            unset($collectionRequest->empresa_id);
-            unset($collectionRequest->usuario_id);
-
-            $dados = null;
+            $dados = $collectionRequest;
 
             if ($collectionRequest){
-                $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest->id)->load();
-                $documentos = Documentos::where('request_id', '=', $collectionRequest->id)->load();
-
-                $dados = $collectionRequest->toArray();
-                $dados['empresa'] = $empresa_nome;
-                $dados['usuario'] = $usuario_nome;
+                $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest['id'])->load();
+                $documentos = Documentos::where('request_id', '=', $collectionRequest['id'])->load();
 
                 $dados['documentos_solicitados'] = array_map(function($item) {
                     return $item->toArray();
@@ -162,9 +151,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
                     return $item->toArray();
                 }, $documentos);
 
-                if(empty($dados['documentos_enviados'])) {
-                    $dados['documentos_enviados'] = 'Nenhum documento enviado.';
-                }
+                if(empty($dados['documentos_enviados'])) { $dados['documentos_enviados'] = 'Nenhum documento enviado.'; }
             } else {
                 throw new Exception("Token não encontrado.");
             }
