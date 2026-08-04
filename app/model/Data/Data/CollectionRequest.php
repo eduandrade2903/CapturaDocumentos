@@ -20,12 +20,12 @@ class CollectionRequest extends TRecord
         parent::addAttribute('data_expiracao');
     }
 
-    public function getEmpresa()
+    public function get_empresa()
     {
         return new Empresas($this->empresa_id);
     }
 
-    public function getUsuario()
+    public function get_usuario()
     {
         return new Usuarios($this->usuario_id);
     }
