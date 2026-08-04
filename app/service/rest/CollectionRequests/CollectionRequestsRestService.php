@@ -136,13 +136,35 @@ class CollectionRequestsRestService extends AdiantiRecordService
         try {
             TTransaction::open('data');
             $collectionRequest = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+
+            $empresa_nome = $collectionRequest->empresa->razao_social;
+            $usuario_nome = $collectionRequest->usuario->nome_completo;
+
+            unset($collectionRequest->token_unico);
+            unset($collectionRequest->empresa_id);
+            unset($collectionRequest->usuario_id);
+
             $dados = null;
+
             if ($collectionRequest){
                 $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest->id)->load();
+                $documentos = Documentos::where('request_id', '=', $collectionRequest->id)->load();
+
                 $dados = $collectionRequest->toArray();
-                $dados['documentos'] = array_map(function($item) {
+                $dados['empresa'] = $empresa_nome;
+                $dados['usuario'] = $usuario_nome;
+
+                $dados['documentos_solicitados'] = array_map(function($item) {
                     return $item->toArray();
                 }, $collectionRequestDocumentos);
+
+                $dados['documentos_enviados'] = array_map(function($item) {
+                    return $item->toArray();
+                }, $documentos);
+
+                if(empty($dados['documentos_enviados'])) {
+                    $dados['documentos_enviados'] = 'Nenhum documento enviado.';
+                }
             } else {
                 throw new Exception("Token não encontrado.");
             }
