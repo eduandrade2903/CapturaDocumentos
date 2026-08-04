@@ -12,6 +12,7 @@ O serviço **Solicitações de Coleta** (`CollectionRequests`) gerencia o ciclo 
 | :---        | :---                 | :---                         | :---              | :---      |
 | `POST`      | `create`             | `/collections`               | ✅ Sim (`Header`) | Cria manualmente uma solicitação de coleta e token temporário. |
 | `GET`       | `getById`/`loadAll`  | `/collections/{id}`          | ✅ Sim (`Header`) | Consulta solicitação por `id` ou lista todas. |
+| `GET`       | `getByTokenUnico`    | `/collections/{token_unico}` | ✅ Sim (`Header`) | Consulta solicitação por token único de jornada e lista seus documentos. |
 | `PUT`       | `store`              | `/collections/{id}`          | ✅ Sim (`Header`) | Atualiza os dados de uma solicitação. |
 | `DELETE`    | `delete`/`deleteAll` | `/collections/{id}`          | ✅ Sim (`Header`) | Exclui solicitação por `id` ou em lote. |
 
@@ -119,6 +120,50 @@ Gera uma nova solicitação de coleta especificando a empresa e o usuário.
       "data_expiracao": "2026-07-28 11:35:00"
     }
   }
+}
+```
+
+### Consultar Por Token Único
+
+- **URL**: `https://seu-dominio.com.br/collections/{token_unico}`
+- **Verbo**: `GET`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Basic REST_KEY`
+  - `Content-Type: application/json`
+
+#### Resposta de Sucesso (`200 OK`)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 18,
+    "empresa_id": 1,
+    "usuario_id": 42,
+    "token_unico": "e3b0c442-98fc-1c14-9afb-f4c8996fb924",
+    "status": "pendente",
+    "data_criacao": "2026-07-27 11:35:00",
+    "data_expiracao": "2026-07-28 11:35:00",
+    "documentos": [
+      {
+        "id": 10,
+        "request_id": 18,
+        "tipo_documento_id": 2,
+        "status": "pendente",
+        "data_criacao": "2026-07-27 11:35:00"
+      }
+    ]
+  }
+}
+```
+
+#### Resposta de Erro (`400 Bad Request`)
+
+```json
+{
+  "status": "error",
+  "message": "Token não encontrado."
 }
 ```
 

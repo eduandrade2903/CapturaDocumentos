@@ -737,6 +737,48 @@ paths:
                     nullable: true
                     example: null
 
+  /collections/{token_unico}:
+    get:
+      tags:
+        - Collections
+      summary: Buscar Solicitação de Coleta por Token Único
+      description: |
+        Retorna os detalhes de uma solicitação de coleta (CollectionRequest) e seus respectivos documentos exigidos, buscando pelo token único seguro de 24 horas gerado para a jornada.
+      parameters:
+        - name: token_unico
+          in: path
+          required: true
+          description: Token único (UUID/hash) da solicitação de coleta
+          schema:
+            type: string
+            example: e3b0c442-98fc-1c14-9afb-f4c8996fb924
+      responses:
+        '200':
+          description: Solicitação de coleta encontrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/CollectionRequest'
+                      - type: object
+                        properties:
+                          documentos:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/CollectionRequestDocumento'
+        '400':
+          description: Token não encontrado ou erro na transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /webhook-events:
     get:
       tags:
@@ -929,6 +971,29 @@ components:
         data_expiracao:
           type: string
           example: "2026-07-28 11:35:00"
+
+    CollectionRequestDocumento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        request_id:
+          type: integer
+          description: ID da solicitação de coleta vinculada
+          example: 18
+        tipo_documento_id:
+          type: integer
+          description: ID do tipo de documento exigido
+          example: 2
+        status:
+          type: string
+          description: Status de upload do documento específico
+          example: pendente
+        data_criacao:
+          type: string
+          description: Data de criação do registro de documento
+          example: "2026-07-27 11:35:00"
 
     WebhookEvent:
       type: object

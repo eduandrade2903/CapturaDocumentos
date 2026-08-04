@@ -9,12 +9,12 @@ class CollectionRequestsRestService extends AdiantiRecordService
     const DATABASE      = 'data';
     const ACTIVE_RECORD = 'CollectionRequest';
     const ATTRIBUTES    = ['id', 'empresa_id', 'usuario_id', 'token_unico', 'status', 'data_criacao', 'data_expiracao'];
-    // const REST_KEY      = 'public';
 
     protected string $API_KEY;
 
     /**
-     *
+     * Método padrão para tratamento de requisições HTTP.
+     * Direciona para o método específico baseado no método HTTP da requisição.
      * @param mixed $param
      */
     public function handle($param)
@@ -25,6 +25,11 @@ class CollectionRequestsRestService extends AdiantiRecordService
         
         if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
 
+        TTransaction::open('data');
+        $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
+        TTransaction::close();
+        if( empty($empresa->id ) ) { throw new Exception('Sem autorizacao.'); }
+
         unset($param['class']);
         unset($param['method']);
 
@@ -33,9 +38,6 @@ class CollectionRequestsRestService extends AdiantiRecordService
             
             if (json_last_error() === JSON_ERROR_NONE && is_array($decodedFilters)) {
                 
-                // Verifica se o array possui itens e se o primeiro item NÃO é um array.
-                // Se não for, significa que recebemos ["campo", "=", "valor"]
-                // Então forçamos virar bidimensional: [["campo", "=", "valor"]]
                 if (!empty($decodedFilters) && !is_array(reset($decodedFilters))) {
                     $decodedFilters = [$decodedFilters];
                 }
@@ -43,7 +45,9 @@ class CollectionRequestsRestService extends AdiantiRecordService
                 $param['filters'] = $decodedFilters;
             }
         }
-        
+        // Insere o filtro para trazer apenas solicitações da empresa autenticada
+        $param['filters'][] = ['empresa_id', '=', $empresa->id];
+
         
         switch( $method )
         {
@@ -51,6 +55,8 @@ class CollectionRequestsRestService extends AdiantiRecordService
                 if (!empty($param['id']))
                 {
                     return $this->getById($param);
+                } elseif (!empty($param['token_unico'])) {
+                    return $this->getByTokenUnico($param);
                 } else {
                     return $this->loadAll($param);
                 }
@@ -115,6 +121,36 @@ class CollectionRequestsRestService extends AdiantiRecordService
             return [
                 'status' => 'success',
                 'data' => $collectionRequest->toArray()
+            ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(400);
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function getByTokenUnico($param) {
+        try {
+            TTransaction::open('data');
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+            $dados = null;
+            if ($collectionRequest){
+                $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest->id)->load();
+                $dados = $collectionRequest->toArray();
+                $dados['documentos'] = array_map(function($item) {
+                    return $item->toArray();
+                }, $collectionRequestDocumentos);
+            } else {
+                throw new Exception("Token não encontrado.");
+            }
+            TTransaction::close();
+
+            return [
+                'status' => 'success',
+                'data' => $dados
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
