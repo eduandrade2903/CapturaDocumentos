@@ -11,7 +11,7 @@ class Documentos extends TRecord {
     public function __construct($id = NULL, $callObjectLoad = TRUE) {
         parent::__construct($id, $callObjectLoad);
         parent::addAttribute('request_id');
-        parent::addAttribute('tipo_documento');
+        parent::addAttribute('tipo_documento_id');
         parent::addAttribute('storage_path');
         parent::addAttribute('status');
         parent::addAttribute('motivo_rejeicao');
