@@ -18,16 +18,22 @@ class CollectionRequestDocumentos extends TRecord
         parent::addAttribute('data_criacao');
     }
 
-    public static function criaCollectionDocumento($requestId, $tipoDocumentoId) {
+    /**
+     * Cria uma collection de documentos para uma requisição.
+     * @param mixed $requestId
+     * @param array $tipoDocumentoId -> array de ids de tipos de documentos
+     * @return void
+     */
+    public static function criaCollectionDocumento($requestId, array $tipoDocumentoId){
 
-
-        $colletionRequestDocumentos = new self();
-        $colletionRequestDocumentos->request_id = $requestId;
-        $colletionRequestDocumentos->tipo_documento_id = $tipoDocumentoId;
-        $colletionRequestDocumentos->status = 'pendente';
-        $colletionRequestDocumentos->data_criacao = date('Y-m-d H:i:s');
-        $colletionRequestDocumentos->store();
-
+        foreach($tipoDocumentoId as $tipoDocumento) {
+            $colletionRequestDocumentos = new self();
+            $colletionRequestDocumentos->request_id = $requestId;
+            $colletionRequestDocumentos->tipo_documento_id = $tipoDocumento;
+            $colletionRequestDocumentos->status = 'pendente';
+            $colletionRequestDocumentos->data_criacao = date('Y-m-d H:i:s');
+            $colletionRequestDocumentos->store();
+        }    
     }
 
 }

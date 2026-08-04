@@ -46,7 +46,7 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
     public static function getCollectionRequestDocumentos($param)
     {
         try {
-            $collectionRequestId = $param['collection_request_id'] ?? null;
+            $collectionRequestId = $param['tipos_documentos'] ?? null;
 
             if (is_null($collectionRequestId)) {
                 throw new Exception("ID da solicitação de coleta não fornecido.");

@@ -77,7 +77,7 @@ class UsuariosRestService extends AdiantiRecordService
             $coletaRegistrada = CollectionRequest::registra($empresa->id ?? null, $usuario->id ?? null, 'pendente');
             
             if(empty($request['data']['tipos_documentos'])) throw new Exception("Nenhum tipo de documento foi informado para o usuário.");
-
+           
             CollectionRequestDocumentos::criaCollectionDocumento($coletaRegistrada['model']->id, $request['data']['tipos_documentos']);
             
 
@@ -93,7 +93,10 @@ class UsuariosRestService extends AdiantiRecordService
         }catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(400);
-            throw new Exception('Erro ao criar usuário: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'data'   => 'Erro ao criar usuário: ' . $e->getMessage()
+            ];
         }
     }
 

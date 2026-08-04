@@ -1,4 +1,4 @@
 <?php 
-echo bin2hex(random_bytes(128));
+echo hash('sha256', '123');
 echo '<br> <br>';
 phpinfo(); ?>
