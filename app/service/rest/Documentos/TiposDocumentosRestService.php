@@ -4,7 +4,7 @@ use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
-class DocumentosRestService extends AdiantiRecordService{
+class TiposDocumentosRestService extends AdiantiRecordService{
 
     protected string $API_KEY;
 
@@ -76,13 +76,12 @@ class DocumentosRestService extends AdiantiRecordService{
             $documento = new TiposDocumentos();
             $documento->nome = $param['nome'];
             $documento->descricao = $param['descricao'];
-            $documento->ativo = 1;
             $documento->store();
             TTransaction::close();
-            return ['status' => 'success', 'message' => 'Documento criado com sucesso.'];
+            return ['status' => 'success', 'message' => 'Tipo de documento cadastrado com sucesso.'];
         } catch (Exception $e) {
             TTransaction::rollback();
-            throw new Exception("Erro ao criar documento: " . $e->getMessage());
+            throw new Exception("Erro ao cadastrar tipo de documento: " . $e->getMessage());
         }
 
     }         
