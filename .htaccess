@@ -201,6 +201,9 @@ RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=h
 
 RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
 
+RewriteRule ^documentos$ rest.php?class=DocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^documentos/([A-Za-z0-9]*)$ rest.php?class=DocumentosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied
 </FilesMatch>
