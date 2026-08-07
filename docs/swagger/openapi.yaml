@@ -816,6 +816,125 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /documentos:
+    get:
+      tags:
+        - Documentos
+      summary: Listar Todos os Documentos Enviados
+      description: |
+        Retorna a lista de todos os documentos que foram carregados no sistema (registros da tabela `documentos`).
+        Esta rota exige a chave de API da empresa parceira no cabeçalho.
+      security:
+        - basicAuth: []
+          apiKeyHeader: []
+        - bearerAuth: []
+          apiKeyHeader: []
+      responses:
+        '200':
+          description: Lista de documentos carregada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Documento'
+        '403':
+          description: Sem autorização
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno no servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Documentos
+      summary: Enviar Documentos da Coleta (Multipart/Form-Data)
+      description: |
+        Realiza o upload e processamento de documentos para uma solicitação de coleta (`CollectionRequest`).
+        Esta rota recebe dados via `multipart/form-data`.
+        Cada arquivo é associado a um tipo de documento via chave do arquivo (por exemplo, `documentos[1]` ou `documentos[2]` onde o índice numérico é o ID do tipo de documento) ou enviando o arquivo sob a chave `file` acompanhado de um parâmetro `tipo_documento_id`.
+        A rota requer autenticação do framework e a chave de API da empresa parceira no cabeçalho.
+      security:
+        - basicAuth: []
+          apiKeyHeader: []
+        - bearerAuth: []
+          apiKeyHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - request_id
+              properties:
+                request_id:
+                  type: integer
+                  description: ID da solicitação de coleta (CollectionRequest ID)
+                  example: 18
+                token_unico:
+                  type: string
+                  description: Token único de segurança da solicitação de coleta (pode ser enviado em vez de request_id)
+                  example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                tipo_documento_id:
+                  type: integer
+                  description: ID do tipo de documento (utilizado somente se enviar arquivo sob a chave 'file')
+                  example: 2
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo único (usado em conjunto com tipo_documento_id)
+                documentos[1]:
+                  type: string
+                  format: binary
+                  description: Arquivo do tipo de documento ID 1 (exemplo RG)
+                documentos[2]:
+                  type: string
+                  format: binary
+                  description: Arquivo do tipo de documento ID 2 (exemplo CPF)
+      responses:
+        '201':
+          description: Documentos salvos com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Documentos enviados e salvos com sucesso.
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Documento'
+        '400':
+          description: Parâmetros inválidos ou erro de processamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno no servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     basicAuth:
@@ -1023,3 +1142,35 @@ components:
         criado_em:
           type: string
           example: "2026-07-27 12:00:00"
+
+    Documento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        request_id:
+          type: integer
+          description: ID da solicitação de coleta vinculada (CollectionRequest ID)
+          example: 18
+        tipo_documento_id:
+          type: integer
+          description: ID do tipo de documento
+          example: 1
+        storage_path:
+          type: string
+          description: Caminho de armazenamento do arquivo no servidor
+          example: tmp/doc_18_1_1691350800_64cf7a2b.jpg
+        status:
+          type: string
+          description: Status de upload do documento
+          example: enviado
+        motivo_rejeicao:
+          type: string
+          nullable: true
+          description: Motivo da rejeição (se houver)
+          example: null
+        data_upload:
+          type: string
+          description: Data e hora do envio do arquivo
+          example: "2026-08-06 12:15:00"
