@@ -19,7 +19,7 @@ O serviço **Usuários** permite o gerenciamento de clientes/titulares que neces
 
 ## 1. ➕ Criar Usuário (`POST`)
 
-Cadastra um novo usuário para a empresa solicitante e dispara a criação da solicitação de coleta.
+Cadastra um novo usuário para a empresa solicitante, enviando `tipos_documentos` na requisição e dispara a criação da solicitação de coleta.
 
 > [!TIP]
 > O token único retornado em `token.token_unico` deve ser utilizado para redirecionar o usuário ou construir o link da jornada de captura de documentos.
@@ -41,19 +41,21 @@ Cadastra um novo usuário para a empresa solicitante e dispara a criação da so
     "nome_completo": "Maria Oliveira Souza",
     "cpf": "12345678901",
     "email": "maria.souza@email.com",
-    "telefone": "11988887777"
+    "telefone": "11988887777",
+    "tipos_documentos": ["RG", "CNH"]
   }
 }
 ```
 
 ### Parâmetros do Corpo (`data`)
 
-| Campo           | Tipo     | Obrigatório?   | Descrição                                                    |
-| :---            | :---     | :---           | :---                                                         |
-| `nome_completo` | `string` | ✅ Sim         | Nome completo do usuário.                                    |
-| `cpf`           | `string` | ✅ Sim         | CPF do usuário (deve ser único no sistema).                  |
-| `email`         | `string` | ✅ Sim         | E-mail do usuário.                                           |
-| `telefone`      | `string` | ✅ Sim         | Telefone com DDD do usuário.                                 |
+| Campo              | Tipo     | Obrigatório?   | Descrição                                                                        |
+| :---               | :---     | :---           | :---                                                                             |
+| `nome_completo`    | `string` | ✅ Sim         | Nome completo do usuário.                                                        |
+| `cpf`              | `string` | ✅ Sim         | CPF do usuário (deve ser único no sistema).                                      |
+| `email`            | `string` | ✅ Sim         | E-mail do usuário.                                                               |
+| `telefone`         | `string` | ✅ Sim         | Telefone com DDD do usuário.                                                     |
+| `tipos_documentos` | `array`  | ✅ Sim         | Array de tipos de documentos a serem capturados. Ex: ["RG", "CNH", "Passaporte"] |
 
 ---
 

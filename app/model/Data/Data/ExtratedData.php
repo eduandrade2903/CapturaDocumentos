@@ -10,7 +10,7 @@ class ExtratedData extends TRecord {
 
     public function __construct($id = NULL, $callObjectLoad = TRUE) {
         parent::__construct($id, $callObjectLoad);
-        parent::addAttribute('documento_id'); 
+        parent::addAttribute('collection_request_id'); 
         parent::addAttribute('payload_ocr');
         parent::addAttribute('score_confianca');
         parent::addAttribute('processado_em');

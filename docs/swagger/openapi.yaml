@@ -257,7 +257,7 @@ paths:
         - Usuarios
       summary: Cadastrar Novo Usuário
       description: |
-        Cadastra um titular que necessita de envio de documentos. A criação dispara automaticamente a geração de uma Solicitação de Coleta (`CollectionRequest`) vinculada a esta empresa, retornando o token único para link da jornada de captura.
+        Cadastra um novo usuário para a empresa solicitante, enviando `tipos_documentos` na requisição e dispara a criação da solicitação de coleta automática. Retorna o token único para link da jornada de captura.
       requestBody:
         required: true
         content:
@@ -272,22 +272,64 @@ paths:
                   required:
                     - nome_completo
                     - cpf
+                    - email
+                    - telefone
+                    - tipos_documentos
                   properties:
                     nome_completo:
                       type: string
-                      description: Nome completo do titular do documento
+                      description: Nome completo do usuário.
                       example: Maria Oliveira Souza
                     cpf:
                       type: string
-                      description: CPF do titular (formato numérico, deve ser único no banco)
+                      description: CPF do usuário (deve ser único no sistema).
                       example: "12345678901"
                     email:
                       type: string
                       format: email
+                      description: E-mail do usuário.
                       example: maria.souza@email.com
                     telefone:
                       type: string
+                      description: Telefone com DDD do usuário.
                       example: "11988887777"
+                    tipos_documentos:
+                      type: array
+                      description: Array de tipos de documentos a serem capturados.
+                      items:
+                        type: string
+                        enum:
+                          - "1 - RG / CIN"
+                          - "2 - CPF"
+                          - "3 - CERTIDAO DE NASCIMENTO"
+                          - "4 - CNH"
+                          - "5 - CARTEIRA DE TRABALHO"
+                          - "6 - COMPROVANTE DE ENDERECO"
+                          - "7 - HISTORICO ESCOLAR - ENSINO MEDIO"
+                          - "8 - HISTORICO ESCOLAR - ENSINO FUNDAMENTAL"
+                          - "9 - RESERVISTA OU CERTIFICADO DE DISPENSA"
+                          - "10 - CERTIDAO DE CASAMENTO"
+                          - "11 - CERTIDAO DE OBITO"
+                          - "12 - TITULO DE ELEITOR"
+                          - "13 - CERTIDAO DE QUITACAO ELEITORAL"
+                          - "14 - PIS PASEP NIT"
+                          - "15 - COMPROVANTE DE ESCOLARIDADE"
+                          - "16 - COMPROVANTE DE CONTA BANCARIA"
+                          - "17 - CERTIDAO DE UNIAO ESTAVEL"
+                          - "18 - CERTIDAO DE NASCIMENTO DE DEPENDENTE"
+                          - "19 - CPF DE DEPENDENTE"
+                          - "20 - DOCUMENTO DE IDENTIFICACAO DO DEPENDENTE"
+                          - "21 - CURRICULO"
+                          - "22 - REGISTRO PROFISSIONAL"
+                          - "23 - CERTIDAO DE ANTECEDENTES CRIMINAIS"
+                          - "24 - EXAME ADMISSIONAL"
+                          - "25 - COMPROVANTE DE EXPERIENCIA PROFISSIONAL"
+                          - "26 - PASSAPORTE"
+                          - "27 - DOCUMENTO DE IDENTIFICACAO DE ESTRANGEIRO"
+                          - "28 - CERTIFICADO DE CURSO"
+                          - "29 - DIPLOMA"
+                          - "30 - FOTO 3X4"
+                      example: ["1", "2", "4", "6"]
       responses:
         '201':
           description: Usuário cadastrado e solicitação de coleta iniciada
@@ -440,8 +482,13 @@ paths:
             schema:
               type: object
               required:
+                - id
                 - data
               properties:
+                id:
+                  type: integer
+                  description: ID do usuário a ser atualizado.
+                  example: 42
                 data:
                   type: object
                   properties:
@@ -1015,6 +1062,12 @@ components:
 
     Usuario:
       type: object
+      required:
+        - id
+        - nome_completo
+        - cpf
+        - email
+        - telefone
       properties:
         id:
           type: integer

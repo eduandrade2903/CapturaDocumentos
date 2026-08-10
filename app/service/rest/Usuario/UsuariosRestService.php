@@ -17,7 +17,7 @@ class UsuariosRestService extends AdiantiRecordService
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['Api-Key'] ?? null;
+        $this->API_KEY = $headers['api_key'] ?? null;
 
         if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
 

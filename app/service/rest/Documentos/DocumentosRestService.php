@@ -192,6 +192,26 @@ class DocumentosRestService extends AdiantiRecordService{
                         $reqDoc->store();
                     }
 
+                    // Identificar e salvar o texto_documento enviado pela IA do frontend
+                    $textoDocumento = null;
+                    if (isset($param['texto_documento'][$tipoId])) {
+                        $textoDocumento = $param['texto_documento'][$tipoId];
+                    } elseif (isset($_POST['texto_documento'][$tipoId])) {
+                        $textoDocumento = $_POST['texto_documento'][$tipoId];
+                    } elseif (isset($param['texto_documento']) && !is_array($param['texto_documento'])) {
+                        $textoDocumento = $param['texto_documento'];
+                    } elseif (isset($_POST['texto_documento']) && !is_array($_POST['texto_documento'])) {
+                        $textoDocumento = $_POST['texto_documento'];
+                    }
+
+                    if ($textoDocumento) {
+                        $extratedData = new ExtratedData();
+                        $extratedData->collection_request_id = $requestId;
+                        $extratedData->payload_ocr = is_array($textoDocumento) ? json_encode($textoDocumento) : $textoDocumento;
+                        $extratedData->processado_em = date('Y-m-d H:i:s');
+                        $extratedData->store();
+                    }
+
                     $savedDocs[] = $documento->toArray();
                 } else {
                     throw new Exception("Falha ao mover arquivo temporário para o destino: {$originalName}");
