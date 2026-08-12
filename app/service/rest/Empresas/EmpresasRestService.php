@@ -69,6 +69,11 @@ class EmpresasRestService extends AdiantiRecordService
                 throw new Exception('Todos os campos são obrigatórios.');
             }
 
+            //trata campos retirando "., -, /, , ( ,)"
+            $data['cnpj'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['cnpj']);
+            $data['telefone'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['telefone']);
+
+
             $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
 
             TTransaction::open('data');
