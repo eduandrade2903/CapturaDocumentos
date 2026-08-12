@@ -4,225 +4,248 @@ use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
-class DocumentosRestService extends AdiantiRecordService{
+/**
+ * DocumentosRestService
+ * 
+ * Serviço REST para Coleta de Documentos (Onboarding).
+ * Conforme documentação em Documentacao/Documentos.md.
+ */
+class DocumentosRestService extends AdiantiRecordService
+{
+    protected ?string $API_KEY = null;
 
-    protected ?string $API_KEY;
-
+    /**
+     * Tratamento central das requisições HTTP
+     */
     public function handle($param)
     {
-        $method = strtoupper($_SERVER['REQUEST_METHOD']);
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['Api-Key'] ?? $headers['api_key'] ?? null;
+        $this->API_KEY = $headers['api-key'] ?? $headers['Api-Key'] ?? $headers['api_key'] ?? $headers['Api_Key'] ?? null;
 
-        if (is_null($this->API_KEY)) {
+        if (empty($this->API_KEY)) {
+            http_response_code(403);
             throw new Exception('Sem autorizacao.');
         }
 
         unset($param['class']);
         unset($param['method']);
 
-        switch ($method) {
-            case 'GET':
-                if (!empty($param['id'])) {
-                    //return $this->getTipoDocumentosbyId($param);
-                } else {
-                    return $this->getDocumentos();
-                }
-                break;
-            case 'POST':
-                return $this->create($param);
-                break;
-            case 'PUT':
-                //return $this->update($param);
-                break;
-        }
+        return match ($method) {
+            'GET' => $this->loadAll($param),
+            'POST' => $this->create($param),
+            default => throw new Exception("Método HTTP {$method} não suportado.")
+        };
     }
 
-    public static function getDocumentos() {
-        try {
-            TTransaction::open('data');
-            $documentos = Documentos::all();
-
-            $documentosArray = [];
-            foreach ($documentos as $documento) {
-                $documentosArray[] = $documento->toArray();
-            }
-            TTransaction::close();
-            return $documentosArray;
-        } catch (Exception $e) {
-            throw new Exception("Erro ao buscar documentos: " . $e->getMessage());  
-        }
-    }
-
-    public static function create($param) {
+    /**
+     * GET /documentos
+     * Retorna a solicitação de coleta e a lista de documentos exigidos.
+     */
+    public function loadAll($param)
+    {
         try {
             TTransaction::open('data');
 
-            // 1. Identificar o request_id (ID da Solicitação de Coleta)
-            $requestId = $param['request_id'] ?? $_POST['request_id'] ?? null;
-            $tokenUnico = $param['token_unico'] ?? $_POST['token_unico'] ?? null;
-
-            if (empty($requestId) && !empty($tokenUnico)) {
-                $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)->first();
-                if ($collectionRequest) {
-                    $requestId = $collectionRequest->id;
-                }
+            // 1. Validar empresa via API_KEY
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
+            if (empty($empresa->id)) {
+                http_response_code(403);
+                throw new Exception('Sem autorizacao.');
             }
 
-            if (empty($requestId)) {
-                throw new Exception("ID da solicitação de coleta (request_id ou token_unico) não fornecido.");
+            // 2. Obter token_unico dos parâmetros de query
+            $tokenUnico = $param['token_unico'] ?? null;
+            if (empty($tokenUnico)) {
+                http_response_code(400);
+                throw new Exception('Token único não fornecido.');
             }
 
-            // Validar se a solicitação existe
-            $collectionRequest = CollectionRequest::find($requestId);
+            // 3. Buscar CollectionRequest vinculada ao token e à empresa
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
+                                                  ->where('empresa_id', '=', $empresa->id)
+                                                  ->first();
             if (!$collectionRequest) {
-                throw new Exception("Solicitação de coleta de ID {$requestId} não encontrada.");
+                http_response_code(404);
+                throw new Exception('Solicitação de coleta não encontrada ou token inválido.');
             }
 
-            // 2. Mapear e extrair os arquivos enviados via $_FILES
-            $uploadedFiles = [];
+            // 4. Validar se a solicitação expirou
+            if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
+                http_response_code(404);
+                throw new Exception('Solicitação de coleta expirada.');
+            }
 
-            // Caso 1: Array indexado por tipo de documento: documentos[tipo_documento_id]
-            if (!empty($_FILES['documentos']) && is_array($_FILES['documentos']['name'])) {
-                foreach ($_FILES['documentos']['name'] as $tipoId => $name) {
-                    if ($_FILES['documentos']['error'][$tipoId] == UPLOAD_ERR_OK) {
-                        $uploadedFiles[$tipoId] = [
-                            'name'     => $name,
-                            'tmp_name' => $_FILES['documentos']['tmp_name'][$tipoId],
-                            'type'     => $_FILES['documentos']['type'][$tipoId],
-                            'size'     => $_FILES['documentos']['size'][$tipoId]
-                        ];
-                    }
+            $requestId = (int) $collectionRequest->id;
+
+            // 5. Buscar os documentos exigidos para a requisição
+            $reqDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
+
+            $documentosExigidos = [];
+            foreach ($reqDocs as $reqDoc) {
+                $tipoDocId = (int) $reqDoc->tipo_documento_id;
+                $tipoDoc = TiposDocumentos::find($tipoDocId);
+
+                $descricao = '';
+                if ($tipoDoc) {
+                    $descricao = !empty($tipoDoc->descricao) ? $tipoDoc->descricao : ($tipoDoc->nome ?? '');
                 }
+
+                $documentosExigidos[] = [
+                    'tipo_documento_id' => $tipoDocId,
+                    'descricao' => $descricao,
+                    'status' => $reqDoc->status ?? 'pendente'
+                ];
             }
 
-            // Caso 2: Array indexado por tipo de documento: files[tipo_documento_id]
-            if (empty($uploadedFiles) && !empty($_FILES['files']) && is_array($_FILES['files']['name'])) {
-                foreach ($_FILES['files']['name'] as $tipoId => $name) {
-                    if ($_FILES['files']['error'][$tipoId] == UPLOAD_ERR_OK) {
-                        $uploadedFiles[$tipoId] = [
-                            'name'     => $name,
-                            'tmp_name' => $_FILES['files']['tmp_name'][$tipoId],
-                            'type'     => $_FILES['files']['type'][$tipoId],
-                            'size'     => $_FILES['files']['size'][$tipoId]
-                        ];
-                    }
-                }
+            TTransaction::close();
+
+            return [
+                'request_id' => $requestId,
+                'token_unico' => $collectionRequest->token_unico,
+                'status_request' => $collectionRequest->status,
+                'data_expiracao' => $collectionRequest->data_expiracao,
+                'documentos_exigidos' => $documentosExigidos
+            ];
+
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * POST /documentos
+     * Recebe arquivos do usuário (multipart/form-data ou base64) e grava na base/servidor.
+     */
+    public function create($param)
+    {
+        try {
+            TTransaction::open('data');
+
+            // 1. Validar empresa via API_KEY
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
+            if (empty($empresa->id)) {
+                http_response_code(403);
+                throw new Exception('Sem autorizacao.');
             }
 
-            // Caso 3: Nomes de chaves contendo o ID, ex: documento_1, file_2, etc.
-            if (empty($uploadedFiles)) {
-                foreach ($_FILES as $key => $fileData) {
-                    $tipoId = preg_replace('/[^0-9]/', '', $key);
-                    if ($tipoId !== '' && is_numeric($tipoId) && $fileData['error'] == UPLOAD_ERR_OK) {
-                        $uploadedFiles[$tipoId] = [
-                            'name'     => $fileData['name'],
-                            'tmp_name' => $fileData['tmp_name'],
-                            'type'     => $fileData['type'],
-                            'size'     => $fileData['size']
-                        ];
-                    }
-                }
+            // 2. Extrair parâmetros
+            $tokenUnico = $param['token_unico'] ?? $_POST['token_unico'] ?? null;
+            if (empty($tokenUnico)) {
+                http_response_code(400);
+                throw new Exception('Token único não fornecido.');
             }
 
-            // Caso 4: Envio sob a chave única 'file' com 'tipo_documento_id' nos campos normais
-            if (empty($uploadedFiles) && !empty($_FILES['file']) && $_FILES['file']['error'] == UPLOAD_ERR_OK) {
-                $tipoId = $param['tipo_documento_id'] ?? $_POST['tipo_documento_id'] ?? null;
-                if ($tipoId) {
-                    $uploadedFiles[$tipoId] = [
-                        'name'     => $_FILES['file']['name'],
-                        'tmp_name' => $_FILES['file']['tmp_name'],
-                        'type'     => $_FILES['file']['type'],
-                        'size'     => $_FILES['file']['size']
-                    ];
-                }
+            // 3. Buscar CollectionRequest
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
+                                                  ->where('empresa_id', '=', $empresa->id)
+                                                  ->first();
+            if (!$collectionRequest) {
+                http_response_code(404);
+                throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
 
-            if (empty($uploadedFiles)) {
-                throw new Exception("Nenhum arquivo válido enviado ou erro no upload dos arquivos.");
+            // 4. Verificar expiração
+            if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
+                http_response_code(404);
+                throw new Exception('Solicitação de coleta expirada.');
             }
 
-            // 3. Garantir a pasta tmp no root do projeto
+            $requestId = (int) $collectionRequest->id;
+
+            // 5. Carregar tipos de documentos permitidos (exigidos) para validação (422)
+            $reqDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
+            $validTipoIds = array_map(fn($doc) => (int)$doc->tipo_documento_id, $reqDocs);
+
+            // 6. Pasta de destino local para os arquivos
             $destDir = getcwd() . '/tmp';
             if (!is_dir($destDir)) {
                 mkdir($destDir, 0777, true);
             }
 
+            // 7. Extrair lista de arquivos enviada (seja via $_FILES multipart ou via Base64 em $param)
+            $filesToProcess = $this->extractUploadedFiles($param);
+
+            if (empty($filesToProcess)) {
+                http_response_code(400);
+                throw new Exception('Nenhum arquivo enviado.');
+            }
+
             $savedDocs = [];
 
-            // 4. Salvar cada arquivo e salvar no banco de dados
-            foreach ($uploadedFiles as $tipoId => $fileData) {
-                // Verificar se o tipo de documento existe
-                $tipoDoc = TiposDocumentos::find($tipoId);
-                if (!$tipoDoc) {
-                    throw new Exception("Tipo de documento com ID {$tipoId} não existe.");
+            // 8. Processar e salvar cada arquivo
+            foreach ($filesToProcess as $fileItem) {
+                $tipoId = (int) ($fileItem['tipo_documento_id'] ?? 0);
+                if ($tipoId <= 0) {
+                    http_response_code(400);
+                    throw new Exception('tipo_documento_id não fornecido para um dos arquivos.');
                 }
 
-                $originalName = $fileData['name'];
-                $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-                $filename = 'doc_' . $requestId . '_' . $tipoId . '_' . time() . '_' . uniqid() . ($extension ? '.' . $extension : '');
-                $destinationPath = 'tmp/' . $filename;
-                $absolutePath = $destDir . '/' . $filename;
+                // Validação 422: O tipo de documento enviado deve corresponder aos exigidos
+                if (!in_array($tipoId, $validTipoIds, true)) {
+                    http_response_code(422);
+                    throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em CollectionRequestDocumentos.");
+                }
 
-                if (move_uploaded_file($fileData['tmp_name'], $absolutePath)) {
-                    // Registrar no banco de dados
+                // Salvar o arquivo no disco
+                if (isset($fileItem['tmp_name']) && file_exists($fileItem['tmp_name'])) {
+                    $destinationPath = $this->savePhysicalFile($fileItem, $requestId, $tipoId, $destDir);
+                } elseif (!empty($fileItem['base64'])) {
+                    $destinationPath = $this->saveBase64File($fileItem['base64'], $requestId, $tipoId, $destDir);
+                } else {
+                    http_response_code(400);
+                    throw new Exception("Arquivo inválido para o tipo de documento {$tipoId}.");
+                }
+
+                // Criar ou atualizar registro em Documentos
+                $documento = Documentos::where('request_id', '=', $requestId)
+                                        ->where('tipo_documento_id', '=', $tipoId)
+                                        ->first();
+                if (!$documento) {
                     $documento = new Documentos();
                     $documento->request_id = $requestId;
                     $documento->tipo_documento_id = $tipoId;
-                    $documento->storage_path = $destinationPath;
-                    $documento->status = 'enviado';
-                    $documento->motivo_rejeicao = null;
-                    $documento->data_upload = date('Y-m-d H:i:s');
-                    $documento->store();
-
-                    // Atualizar o status da exigência na tabela collection_request_documentos
-                    $reqDoc = CollectionRequestDocumentos::where('request_id', '=', $requestId)
-                                                          ->where('tipo_documento_id', '=', $tipoId)
-                                                          ->first();
-                    if ($reqDoc) {
-                        $reqDoc->status = 'enviado';
-                        $reqDoc->store();
-                    } else {
-                        // Caso a exigência não estivesse pré-cadastrada, criamos para manter integridade
-                        $reqDoc = new CollectionRequestDocumentos();
-                        $reqDoc->request_id = $requestId;
-                        $reqDoc->tipo_documento_id = $tipoId;
-                        $reqDoc->status = 'enviado';
-                        $reqDoc->data_criacao = date('Y-m-d H:i:s');
-                        $reqDoc->store();
-                    }
-
-                    // Identificar e salvar o texto_documento enviado pela IA do frontend
-                    $textoDocumento = null;
-                    if (isset($param['texto_documento'][$tipoId])) {
-                        $textoDocumento = $param['texto_documento'][$tipoId];
-                    } elseif (isset($_POST['texto_documento'][$tipoId])) {
-                        $textoDocumento = $_POST['texto_documento'][$tipoId];
-                    } elseif (isset($param['texto_documento']) && !is_array($param['texto_documento'])) {
-                        $textoDocumento = $param['texto_documento'];
-                    } elseif (isset($_POST['texto_documento']) && !is_array($_POST['texto_documento'])) {
-                        $textoDocumento = $_POST['texto_documento'];
-                    }
-
-                    if ($textoDocumento) {
-                        $extratedData = new ExtratedData();
-                        $extratedData->collection_request_id = $requestId;
-                        $extratedData->payload_ocr = is_array($textoDocumento) ? json_encode($textoDocumento) : $textoDocumento;
-                        $extratedData->processado_em = date('Y-m-d H:i:s');
-                        $extratedData->store();
-                    }
-
-                    $savedDocs[] = $documento->toArray();
-                } else {
-                    throw new Exception("Falha ao mover arquivo temporário para o destino: {$originalName}");
                 }
+
+                $documento->storage_path = $destinationPath;
+                $documento->status = 'enviado';
+                $documento->motivo_rejeicao = null;
+                $documento->data_upload = date('Y-m-d H:i:s');
+                $documento->store();
+
+                // Atualizar status na tabela collection_request_documentos
+                $reqDoc = CollectionRequestDocumentos::where('request_id', '=', $requestId)
+                                                      ->where('tipo_documento_id', '=', $tipoId)
+                                                      ->first();
+                if ($reqDoc) {
+                    $reqDoc->status = 'enviado';
+                    $reqDoc->store();
+                }
+
+                $savedDocs[] = $documento->toArray();
             }
 
-            // 5. Atualizar o status da solicitação de coleta principal se todos os documentos exigidos estiverem enviados
+            // 9. Processar extracted_data (OCR) se fornecido
+            $extractedDataParam = $param['extracted_data'] ?? $_POST['extracted_data'] ?? $param['extrated_data'] ?? null;
+            if ($extractedDataParam) {
+                $payloadOcr = $extractedDataParam;
+                if (is_array($extractedDataParam) || is_object($extractedDataParam)) {
+                    $payloadOcr = json_encode($extractedDataParam);
+                }
+
+                $extratedData = new ExtratedData();
+                $extratedData->collection_request_id = $requestId;
+                $extratedData->payload_ocr = $payloadOcr;
+                $extratedData->processado_em = date('Y-m-d H:i:s');
+                $extratedData->store();
+            }
+
+            // 10. Atualizar status da CollectionRequest se todos os documentos estiverem enviados
             $allDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
             $allUploaded = true;
             foreach ($allDocs as $doc) {
-                if ($doc->status === 'pendente') {
+                if (($doc->status ?? 'pendente') !== 'enviado') {
                     $allUploaded = false;
                     break;
                 }
@@ -240,10 +263,159 @@ class DocumentosRestService extends AdiantiRecordService{
                 'message' => 'Documentos enviados e salvos com sucesso.',
                 'data' => $savedDocs
             ];
+
         } catch (Exception $e) {
             TTransaction::rollback();
-            throw new Exception("Erro ao criar documento: " . $e->getMessage());
+            throw $e;
         }
     }
 
+    /**
+     * Normaliza e extrai os arquivos enviados via $_FILES (multipart/form-data) ou JSON base64
+     */
+    private function extractUploadedFiles(array $param): array
+    {
+        $filesToProcess = [];
+
+        // A. Processar multipart/form-data via $_FILES['documentos']
+        if (!empty($_FILES['documentos'])) {
+            $uploaded = $_FILES['documentos'];
+            if (isset($uploaded['name']) && is_array($uploaded['name'])) {
+                foreach ($uploaded['name'] as $tipoId => $name) {
+                    if (empty($name)) {
+                        continue;
+                    }
+                    $tmpName = $uploaded['tmp_name'][$tipoId] ?? null;
+                    $error = $uploaded['error'][$tipoId] ?? UPLOAD_ERR_NO_FILE;
+
+                    if ($error === UPLOAD_ERR_OK && $tmpName && file_exists($tmpName)) {
+                        $filesToProcess[] = [
+                            'tipo_documento_id' => $tipoId,
+                            'name' => $name,
+                            'tmp_name' => $tmpName,
+                            'type' => $uploaded['type'][$tipoId] ?? null
+                        ];
+                    }
+                }
+            }
+        }
+
+        // B. Processar chaves diretas em $_FILES (ex: $_FILES['documentos_1'] ou $_FILES['1'])
+        if (empty($filesToProcess) && !empty($_FILES)) {
+            foreach ($_FILES as $key => $fileInfo) {
+                if ($key === 'documentos') {
+                    continue;
+                }
+                $tipoId = null;
+                if (preg_match('/^documentos\[?(\d+)\]?$/', $key, $m) || preg_match('/^doc_?(\d+)$/', $key, $m)) {
+                    $tipoId = (int) $m[1];
+                } elseif (is_numeric($key)) {
+                    $tipoId = (int) $key;
+                }
+
+                if ($tipoId && isset($fileInfo['tmp_name']) && $fileInfo['error'] === UPLOAD_ERR_OK && file_exists($fileInfo['tmp_name'])) {
+                    $filesToProcess[] = [
+                        'tipo_documento_id' => $tipoId,
+                        'name' => $fileInfo['name'],
+                        'tmp_name' => $fileInfo['tmp_name'],
+                        'type' => $fileInfo['type'] ?? null
+                    ];
+                }
+            }
+        }
+
+        // C. Processar payload JSON com array de arquivos em Base64 ($param['files'] ou $param['documentos'])
+        if (empty($filesToProcess)) {
+            $base64Files = $param['files'] ?? $param['documentos'] ?? null;
+            if (is_array($base64Files)) {
+                foreach ($base64Files as $key => $fileItem) {
+                    if (is_array($fileItem) && isset($fileItem['tipo_documento_id'], $fileItem['file'])) {
+                        $filesToProcess[] = [
+                            'tipo_documento_id' => $fileItem['tipo_documento_id'],
+                            'base64' => $fileItem['file']
+                        ];
+                    } elseif (is_numeric($key) && is_string($fileItem)) {
+                        $filesToProcess[] = [
+                            'tipo_documento_id' => $key,
+                            'base64' => $fileItem
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $filesToProcess;
+    }
+
+    /**
+     * Salva um arquivo vindo de upload físico em disco
+     */
+    private function savePhysicalFile(array $fileInfo, int $requestId, int $tipoDocumentoId, string $destDir): string
+    {
+        $originalName = $fileInfo['name'] ?? 'file';
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        if (empty($extension)) {
+            $extension = 'bin';
+        }
+
+        $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . strtolower($extension);
+        $destinationPath = 'tmp/' . $filename;
+        $absolutePath = $destDir . '/' . $filename;
+
+        if (is_uploaded_file($fileInfo['tmp_name'])) {
+            if (!move_uploaded_file($fileInfo['tmp_name'], $absolutePath)) {
+                throw new Exception("Falha ao mover arquivo enviado para o servidor.");
+            }
+        } else {
+            if (!copy($fileInfo['tmp_name'], $absolutePath)) {
+                throw new Exception("Falha ao salvar arquivo no servidor.");
+            }
+        }
+
+        return $destinationPath;
+    }
+
+    /**
+     * Salva um arquivo codificado em Base64 em disco
+     */
+    private function saveBase64File(string $base64String, int $requestId, int $tipoDocumentoId, string $destDir): string
+    {
+        $mimeType = null;
+        $extension = 'jpg';
+        $fileData = $base64String;
+
+        if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
+            $mimeType = $matches[1];
+            $fileData = $matches[2];
+            
+            $mimeTypes = [
+                'image/jpeg' => 'jpg',
+                'image/jpg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'application/pdf' => 'pdf',
+                'application/msword' => 'doc',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+                'text/plain' => 'txt'
+            ];
+            if (isset($mimeTypes[$mimeType])) {
+                $extension = $mimeTypes[$mimeType];
+            }
+        }
+
+        $decodedData = base64_decode($fileData);
+        if ($decodedData === false) {
+            throw new Exception("Falha ao decodificar o arquivo base64 para o tipo de documento {$tipoDocumentoId}.");
+        }
+
+        $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . $extension;
+        $destinationPath = 'tmp/' . $filename;
+        $absolutePath = $destDir . '/' . $filename;
+
+        if (file_put_contents($absolutePath, $decodedData) === false) {
+            throw new Exception("Falha ao salvar o arquivo decodificado no servidor.");
+        }
+
+        return $destinationPath;
+    }
 }

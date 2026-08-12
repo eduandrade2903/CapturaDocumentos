@@ -867,18 +867,25 @@ paths:
     get:
       tags:
         - Documentos
-      summary: Listar Todos os Documentos Enviados
+      summary: Retornar solicitação de coleta e documentos exigidos
       description: |
-        Retorna a lista de todos os documentos que foram carregados no sistema (registros da tabela `documentos`).
-        Esta rota exige a chave de API da empresa parceira no cabeçalho.
+        Retorna o status da solicitação de documentos e a lista de documentos (inputs) que o Frontend precisa renderizar para o usuário com base no `token_unico`.
       security:
         - basicAuth: []
           apiKeyHeader: []
         - bearerAuth: []
           apiKeyHeader: []
+      parameters:
+        - name: token_unico
+          in: query
+          required: true
+          description: O token gerado no momento da criação do usuário.
+          schema:
+            type: string
+            example: "abc123xyz890"
       responses:
         '200':
-          description: Lista de documentos carregada com sucesso
+          description: Status da solicitação e documentos exigidos retornados com sucesso
           content:
             application/json:
               schema:
@@ -888,11 +895,49 @@ paths:
                     type: string
                     example: success
                   data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Documento'
+                    type: object
+                    properties:
+                      request_id:
+                        type: integer
+                        example: 1054
+                      token_unico:
+                        type: string
+                        example: "abc123xyz890"
+                      status_request:
+                        type: string
+                        example: "pendente"
+                      data_expiracao:
+                        type: string
+                        format: date-time
+                        example: "2026-08-30T23:59:59"
+                      documentos_exigidos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            tipo_documento_id:
+                              type: integer
+                              example: 1
+                            descricao:
+                              type: string
+                              example: "Documento de Identidade (RG)"
+                            status:
+                              type: string
+                              example: "pendente"
+        '400':
+          description: Ausência do token_unico ou formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Sem autorização
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: token_unico inválido, expirado ou não encontrado
           content:
             application/json:
               schema:
@@ -907,12 +952,9 @@ paths:
     post:
       tags:
         - Documentos
-      summary: Enviar Documentos da Coleta (Multipart/Form-Data)
+      summary: Enviar Documentos da Coleta (Multipart / Form-Data ou JSON)
       description: |
-        Realiza o upload e processamento de documentos para uma solicitação de coleta (`CollectionRequest`).
-        Esta rota recebe dados via `multipart/form-data`.
-        Cada arquivo é associado a um tipo de documento via chave do arquivo (por exemplo, `documentos[1]` ou `documentos[2]` onde o índice numérico é o ID do tipo de documento) ou enviando o arquivo sob a chave `file` acompanhado de um parâmetro `tipo_documento_id`.
-        A rota requer autenticação do framework e a chave de API da empresa parceira no cabeçalho.
+        Recebe os arquivos enviados pelo usuário (como `multipart/form-data` ou Base64), vincula-os aos respectivos tipos de documentos exigidos, salva os arquivos no servidor e atualiza a base de dados.
       security:
         - basicAuth: []
           apiKeyHeader: []
@@ -925,35 +967,59 @@ paths:
             schema:
               type: object
               required:
-                - request_id
+                - token_unico
               properties:
-                request_id:
-                  type: integer
-                  description: ID da solicitação de coleta (CollectionRequest ID)
-                  example: 18
                 token_unico:
                   type: string
-                  description: Token único de segurança da solicitação de coleta (pode ser enviado em vez de request_id)
-                  example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                tipo_documento_id:
-                  type: integer
-                  description: ID do tipo de documento (utilizado somente se enviar arquivo sob a chave 'file')
-                  example: 2
-                file:
+                  description: Token de identificação da CollectionRequest.
+                  example: "abc123xyz890"
+                extracted_data:
                   type: string
-                  format: binary
-                  description: Arquivo único (usado em conjunto com tipo_documento_id)
+                  description: "JSON String ou objeto com dados extraídos (OCR)."
+                  example: '{"nome": "ana", "cpf": "129873"}'
                 documentos[1]:
                   type: string
                   format: binary
-                  description: Arquivo do tipo de documento ID 1 (exemplo RG)
-                documentos[2]:
+                  description: Arquivo do tipo de documento ID 1 (ex. RG)
+                documentos[3]:
                   type: string
                   format: binary
-                  description: Arquivo do tipo de documento ID 2 (exemplo CPF)
+                  description: Arquivo do tipo de documento ID 2 (ex. Comprovante de Residência)
+          application/json:
+            schema:
+              type: object
+              required:
+                - token_unico
+              properties:
+                token_unico:
+                  type: string
+                  description: Token de identificação da CollectionRequest.
+                  example: "abc123xyz890"
+                extracted_data:
+                  type: object
+                  description: Objeto de dados extraídos (OCR).
+                  example:
+                    nome: "ana"
+                    cpf: "129873"
+                files:
+                  type: array
+                  description: Array de arquivos codificados em Base64.
+                  items:
+                    type: object
+                    required:
+                      - tipo_documento_id
+                      - file
+                    properties:
+                      tipo_documento_id:
+                        type: integer
+                        example: 1
+                      file:
+                        type: string
+                        description: Conteúdo do arquivo em Base64
+                        example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
       responses:
         '201':
-          description: Documentos salvos com sucesso
+          description: Documentos enviados e salvos com sucesso
           content:
             application/json:
               schema:
@@ -962,15 +1028,39 @@ paths:
                   status:
                     type: string
                     example: success
-                  message:
-                    type: string
-                    example: Documentos enviados e salvos com sucesso.
                   data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Documento'
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Documentos enviados e salvos com sucesso.
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Documento'
         '400':
-          description: Parâmetros inválidos ou erro de processamento
+          description: Formato inválido, ausência do token_unico ou nenhum arquivo enviado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: token_unico inválido, expirado ou não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Tipo de documento enviado não corresponde aos solicitados em CollectionRequestDocumentos
           content:
             application/json:
               schema:
