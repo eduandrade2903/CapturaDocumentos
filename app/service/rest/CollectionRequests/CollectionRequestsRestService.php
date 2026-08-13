@@ -85,7 +85,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
             TTransaction::open('data');
 
             // Chama a regra de negócio centralizada na Model!
-            $resultado = CollectionRequest::registrar(
+            $resultado = CollectionRequest::registra(
                 $request['empresa_id'] ?? null,
                 $request['usuario_id'] ?? null,
                 $request['status']     ?? 'pendente'
@@ -131,64 +131,57 @@ class CollectionRequestsRestService extends AdiantiRecordService
         }
     }
 
-    public static function getByToken($param)
-    {
-        try {
-            TTransaction::open('data');
+    public function getByTokenUnico($param) {
+    try {
+        TTransaction::open('data');
+        $collectionRequest = CollectionRequest::getByToken($param['token_unico']);
 
-            $token = $param ?? null;
+        $dados = $collectionRequest;
+        
+        if ($collectionRequest){
+            $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest['id'])->load();
+            $documentos = Documentos::where('request_id', '=', $collectionRequest['id'])->load();
 
-            if (is_null($token)) {
-                throw new Exception("Token de solicitação não fornecido.");
-            }
-
-            // 1. Busca a requisição pai pelo token_unico
-            $request = CollectionRequest::where('token_unico', '=', $token)->first();
-
-            if (!$request) {
-                throw new Exception("Solicitação não encontrada.");
-            }
-
-            // 2. Valida expiração (Data atual vs Data de expiração)
-            if (strtotime($request->data_expiracao) < time()) {
-                throw new Exception("Esta solicitação já expirou.");
-            }
-
-            // 3. Busca os documentos atrelados a essa requisição (id 6 no seu exemplo)
-            $documentos = CollectionRequestDocumentos::where('request_id', '=', $request->id)->load();
-
-            // 4. Formata os documentos trazendo também os dados de TiposDocumentos
-            $documentosFormatados = [];
-            foreach ($documentos as $doc) {
-                $tipoDoc = TiposDocumentos::find($doc->tipo_documento_id);
-
-                $documentosFormatados[] = [
-                    'id' => $doc->id,
-                    'request_id' => $doc->request_id,
-                    'tipo_documento_id' => $doc->tipo_documento_id,
-                    'status' => $doc->status,
-                    'data_criacao' => $doc->data_criacao,
-                    'tipo_documento' => $tipoDoc ? [
-                        'id' => $tipoDoc->id,
-                        'nome' => $tipoDoc->nome,
-                        'descricao' => $tipoDoc->descricao,
-                    ] : null
+            // AJUSTE AQUI: Injetando o nome do documento direto na resposta
+            $dados['documentos_solicitados'] = array_map(function($item) {
+                $arrayItem = $item->toArray();
+                
+                // Instancia o modelo TiposDocumentos baseado no ID
+                $tipoDocumento = new TiposDocumentos($item->tipo_documento_id);
+                
+                // Cria o nó 'tipo_documento' que o Angular espera ler
+                $arrayItem['tipo_documento'] = [
+                    'id' => $tipoDocumento->id,
+                    'nome' => $tipoDocumento->nome,
+                    'descricao' => $tipoDocumento->descricao ?? 'Por favor, envie este documento.' // Se tiver a coluna descricao, ele manda.
                 ];
+
+                return $arrayItem;
+            }, $collectionRequestDocumentos);
+
+            $dados['documentos_enviados'] = array_map(function($item) {
+                return $item->toArray();
+            }, $documentos);
+
+            if(empty($dados['documentos_enviados'])) { 
+                $dados['documentos_enviados'] = 'Nenhum documento enviado.'; 
             }
-
-            TTransaction::close();
-
-            return [
-                'status' => 'success',
-                'data' => $documentosFormatados
-            ];
-        } catch (Exception $e) {
-            TTransaction::rollback();
-            http_response_code(400);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+        } else {
+            throw new Exception("Token não encontrado.");
         }
+        TTransaction::close();
+
+        return [
+            'status' => 'success',
+            'data' => $dados
+        ];
+    } catch (Exception $e) {
+        TTransaction::rollback();
+        http_response_code(400);
+        return [
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ];
     }
+}
 }

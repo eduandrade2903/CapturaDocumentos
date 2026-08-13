@@ -119,9 +119,8 @@ class EmpresasRestService extends AdiantiRecordService
             EmpresasService::enviaApiEmailEmpresa($empresa, $chave_api);
 
             http_response_code(201); // Set HTTP status code to 201 Created
-            return [
-                'message' => 'Empresa criada com sucesso. Verifique seu e-mail.'
-            ];
+            return[]; 
+                
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500); // Set HTTP status code to 500 Internal Server Error
