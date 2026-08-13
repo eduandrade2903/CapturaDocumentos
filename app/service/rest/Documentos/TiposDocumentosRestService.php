@@ -12,7 +12,7 @@ class TiposDocumentosRestService extends AdiantiRecordService{
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['Api-Key'] ?? null;
+        $this->API_KEY = $headers['api_key'] ?? null;
 
         if (is_null($this->API_KEY)) {
             throw new Exception('Sem autorizacao.');
@@ -48,7 +48,6 @@ class TiposDocumentosRestService extends AdiantiRecordService{
 
     public static function getTipoDocumentos() {
         try {
-
             TTransaction::open('data');
             $documentos = TiposDocumentos::where('ativo', '=', 1)->load();
 

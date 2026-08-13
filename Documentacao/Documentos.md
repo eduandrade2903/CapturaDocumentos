@@ -1,6 +1,6 @@
 Documentação da API: Serviço de Coleta de Documentos (Onboarding)
 
-📌 Visão Geral da ArquiteturaO módulo de coleta de documentos baseia-se no fluxo de requisição gerado na criação do usuário.
+📌 Visão Geral da Arquitetura O módulo de coleta de documentos baseia-se no fluxo de requisição gerado na criação do usuário.
 
 O backend gera uma CollectionRequest contendo um token_unico e associa múltiplos registros em CollectionRequestDocumentos (tipos de documentos exigidos, ex: RG, CPF).
 

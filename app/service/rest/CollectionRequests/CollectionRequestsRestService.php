@@ -86,7 +86,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
             TTransaction::open('data');
 
             // Chama a regra de negócio centralizada na Model!
-            $resultado = CollectionRequest::registrar(
+            $resultado = CollectionRequest::registra(
                 $request['empresa_id'] ?? null,
                 $request['usuario_id'] ?? null,
                 $request['status']     ?? 'pendente'
@@ -133,41 +133,56 @@ class CollectionRequestsRestService extends AdiantiRecordService
     }
 
     public function getByTokenUnico($param) {
-        try {
-            TTransaction::open('data');
-            $collectionRequest = CollectionRequest::getByToken($param['token_unico']);
+    try {
+        TTransaction::open('data');
+        $collectionRequest = CollectionRequest::getByToken($param['token_unico']);
 
-            $dados = $collectionRequest;
+        $dados = $collectionRequest;
+        
+        if ($collectionRequest){
+            $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest['id'])->load();
+            $documentos = Documentos::where('request_id', '=', $collectionRequest['id'])->load();
 
-            if ($collectionRequest){
-                $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest['id'])->load();
-                $documentos = Documentos::where('request_id', '=', $collectionRequest['id'])->load();
+            // AJUSTE AQUI: Injetando o nome do documento direto na resposta
+            $dados['documentos_solicitados'] = array_map(function($item) {
+                $arrayItem = $item->toArray();
+                
+                // Instancia o modelo TiposDocumentos baseado no ID
+                $tipoDocumento = new TiposDocumentos($item->tipo_documento_id);
+                
+                // Cria o nó 'tipo_documento' que o Angular espera ler
+                $arrayItem['tipo_documento'] = [
+                    'id' => $tipoDocumento->id,
+                    'nome' => $tipoDocumento->nome,
+                    'descricao' => $tipoDocumento->descricao ?? 'Por favor, envie este documento.' // Se tiver a coluna descricao, ele manda.
+                ];
 
-                $dados['documentos_solicitados'] = array_map(function($item) {
-                    return $item->toArray();
-                }, $collectionRequestDocumentos);
+                return $arrayItem;
+            }, $collectionRequestDocumentos);
 
-                $dados['documentos_enviados'] = array_map(function($item) {
-                    return $item->toArray();
-                }, $documentos);
+            $dados['documentos_enviados'] = array_map(function($item) {
+                return $item->toArray();
+            }, $documentos);
 
-                if(empty($dados['documentos_enviados'])) { $dados['documentos_enviados'] = 'Nenhum documento enviado.'; }
-            } else {
-                throw new Exception("Token não encontrado.");
+            if(empty($dados['documentos_enviados'])) { 
+                $dados['documentos_enviados'] = 'Nenhum documento enviado.'; 
             }
-            TTransaction::close();
-
-            return [
-                'status' => 'success',
-                'data' => $dados
-            ];
-        } catch (Exception $e) {
-            TTransaction::rollback();
-            http_response_code(400);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ];
+        } else {
+            throw new Exception("Token não encontrado.");
         }
+        TTransaction::close();
+
+        return [
+            'status' => 'success',
+            'data' => $dados
+        ];
+    } catch (Exception $e) {
+        TTransaction::rollback();
+        http_response_code(400);
+        return [
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ];
     }
+}
 }

@@ -21,7 +21,7 @@ class DocumentosRestService extends AdiantiRecordService
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['api-key'] ?? $headers['Api-Key'] ?? $headers['api_key'] ?? $headers['Api_Key'] ?? null;
+        $this->API_KEY = $headers['api_key']  ?? null;
 
         if (empty($this->API_KEY)) {
             http_response_code(403);
@@ -209,7 +209,7 @@ class DocumentosRestService extends AdiantiRecordService
                 }
 
                 $documento->storage_path = $destinationPath;
-                $documento->status = 'enviado';
+                $documento->status = 'APROVADO';
                 $documento->motivo_rejeicao = null;
                 $documento->data_upload = date('Y-m-d H:i:s');
                 $documento->store();

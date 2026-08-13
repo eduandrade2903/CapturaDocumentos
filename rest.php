@@ -6,7 +6,7 @@ header("Access-Control-Allow-Origin: http://localhost:4200", 'http://localhost:8
 header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
 
 // Define os cabeçalhos que o frontend pode enviar (como tokens de autenticação)
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Api-Key");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With,api_key");
 
 // Intercepta a requisição preflight e retorna sucesso imediato sem carregar o resto do framework
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
