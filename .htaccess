@@ -1,4 +1,8 @@
 RewriteEngine On
+
+# Swagger UI Route
+RewriteRule ^swagger$ docs/swagger/index.html [NC,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
@@ -153,7 +157,7 @@ RewriteRule ^system-wiki-search$ index.php?class=SystemWikiSearchList&method=onR
 RewriteRule ^xhr-system-wiki-search$ engine.php?class=SystemWikiSearchList&method=onReload&%{QUERY_STRING} [NC]
 
 #AUTH routes
-RewriteRule ^auth/([A-Za-z0-9]*)/([A-Za-z0-9]*)$ rest.php?class=ApplicationAuthenticationRestService&method=getToken&login=$1&password=$2&%{QUERY_STRING} [NC]
+RewriteRule ^auth/([A-Za-z0-9@._%-]+)/([^/]+)$ rest.php?class=ApplicationAuthenticationRestService&method=getToken&login=$1&password=$2&%{QUERY_STRING} [NC]
 
 #Application specific routes
 RewriteRule ^contact-edit$ index.php?class=ContactForm&method=onEdit&%{QUERY_STRING} [NC]
@@ -189,8 +193,16 @@ RewriteRule ^webhook-events$ rest.php?class=WebhookEventsRestService&method=hand
 RewriteRule ^usuarios$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^usuarios/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^collections$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^collections/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collections$ rest.php?class=CollectionRequestsRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collections/([0-9]+)$ rest.php?class=CollectionRequestsRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collections/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestsRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
+
+RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+
+RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+
+RewriteRule ^documentos$ rest.php?class=DocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^documentos/([A-Za-z0-9]*)$ rest.php?class=DocumentosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied

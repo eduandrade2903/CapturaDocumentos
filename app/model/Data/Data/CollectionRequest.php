@@ -20,14 +20,29 @@ class CollectionRequest extends TRecord
         parent::addAttribute('data_expiracao');
     }
 
-    public function getEmpresa()
+    public function get_empresa()
     {
         return new Empresas($this->empresa_id);
     }
 
-    public function getUsuario()
+    public function get_usuario()
     {
         return new Usuarios($this->usuario_id);
+    }
+
+    public static function getByToken(string $token) {
+        $collection = CollectionRequest::where('token_unico', '=', $token)->first();
+
+        if(!$collection) { throw new Exception("Erro ao lacalizar Collection."); }
+
+        $return = $collection->toArray();
+        $return['usuario'] = $collection->usuario->nome_completo;
+        $return['empresa'] = $collection->empresa->razao_social;
+
+        unset($return['token_unico']);
+        unset($return['empresa_id']);
+        unset($return['usuario_id']);
+        return $return;
     }
 
     public static function isCollectionRequestExistente($id) {

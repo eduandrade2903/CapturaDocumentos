@@ -14,6 +14,8 @@ class EmpresasRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'razao_social', 'cnpj', 'api_key', 'nome_contato', 'email', 'telefone', 'webhook_url', 'data_cadastro'];
     // const REST_KEY      = 'public';
 
+    protected string $API_KEY;
+
     /**
      * @description Endpoint principal para requisições REST
      * @param array $param
@@ -21,22 +23,32 @@ class EmpresasRestService extends AdiantiRecordService
      */
     public function handle($param)
     {
-        $method = strtoupper($_SERVER['REQUEST_METHOD']);
+        try {
+            $method = strtoupper($_SERVER['REQUEST_METHOD']);
+            $headers = AdiantiCoreApplication::getHeaders();
+            $this->API_KEY = $headers['api_key'] ?? 'oi';
 
-        unset($param['class']);
-        unset($param['method']);
+            
+                
+            unset($param['class']);
+            unset($param['method']);
 
 
-        switch ($method) {
-            case 'GET':
-                return $this->getByKey($param);
-                break;
-            case 'POST':
-                return $this->create($param);
-                break;
-            case 'PUT':
-                return $this->update($param);
-                break;
+            switch ($method) {
+                case 'GET':
+                    return $this->getByKey($param);
+                    break;
+                case 'POST':
+                    return $this->create($param);
+                    break;
+                case 'PUT':
+                    return $this->update($param);
+                    break;
+            }
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(404); // Set HTTP status code to 404 Not Found
+            return [ 'message' => $e->getMessage() ];
         }
     }
 
@@ -48,7 +60,7 @@ class EmpresasRestService extends AdiantiRecordService
     public function create(array $request): array
     {
         try {
-            TTransaction::open('data');
+            
 
             $data = $request['data'] ?? [];
 
@@ -57,23 +69,58 @@ class EmpresasRestService extends AdiantiRecordService
                 throw new Exception('Todos os campos são obrigatórios.');
             }
 
+            //trata campos retirando "., -, /, , ( ,)"
+            $data['cnpj'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['cnpj']);
+            $data['telefone'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['telefone']);
+
+
             $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
 
+            TTransaction::open('data');
             $empresa = new Empresas();
             $empresa->fromArray($data);
             $empresa->api_key = hash('sha256', $chave_api); //Armazena no banco o hash da chave
             $empresa->data_cadastro = date('Y-m-d H:i:s');
             $empresa->store();
+            TTransaction::close();
 
+            TTransaction::open('permission');
+            $unidade = new SystemUnit;
+            $unidade->name = $empresa->razao_social;
+            $unidade->custom_code = $empresa->id;
+            $unidade->store();
+
+            $systemUser = new SystemUser;
+            $systemUser->login = $empresa->email;
+            $systemUser->name = $empresa->razao_social;
+            $systemUser->email = $empresa->email;
+            $systemUser->password = SystemUser::passwordHash('Abcd@1234');
+            $systemUser->frontpage_id = '30';
+            $systemUser->active = 'Y';
+            $systemUser->store();
+
+            $systemUserUnit = new SystemUserUnit;
+            $systemUserUnit->system_user_id = $systemUser->id;
+            $systemUserUnit->system_unit_id = $unidade->id;
+            $systemUserUnit->store();
+
+            $systemUserGroup = new SystemUserGroup;
+            $systemUserGroup->system_user_id = $systemUser->id;
+            $systemUserGroup->system_group_id = '4';
+            $systemUserGroup->store();
+
+            TTransaction::close();
+
+            TTransaction::open('data');
+            $empresa->system_user_id = $systemUser->id;
+            $empresa->store();
             TTransaction::close();
 
             EmpresasService::enviaApiEmailEmpresa($empresa, $chave_api);
 
             http_response_code(201); // Set HTTP status code to 201 Created
-            return [
-                'message' => 'Empresa criada com sucesso',
-                'api_key' => $chave_api
-            ];
+            return[]; 
+                
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500); // Set HTTP status code to 500 Internal Server Error
@@ -89,10 +136,9 @@ class EmpresasRestService extends AdiantiRecordService
     public function getByKey(array $request): array
     {
         try {
-            $headers  = AdiantiCoreApplication::getHeaders();
-
+            if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
             TTransaction::open('data');
-            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
             TTransaction::close();
 
             if (!$empresa) {
@@ -120,12 +166,12 @@ class EmpresasRestService extends AdiantiRecordService
     public function update(array $request): array
     {
         try {
-            $headers = AdiantiCoreApplication::getHeaders();
+            if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
             $data = $request['data'] ?? [];
 
             TTransaction::open('data');
 
-            $empresa = Empresas::getEmpresaByApiKey($headers['api_key']);
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
 
             if (!$empresa) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden

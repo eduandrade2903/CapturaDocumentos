@@ -10,6 +10,7 @@ class Empresas extends TRecord {
 
     public function __construct($id = NULL, $callObjectLoad = TRUE) {
         parent::__construct($id, $callObjectLoad);
+        parent::addAttribute('system_user_id');
         parent::addAttribute('razao_social');
         parent::addAttribute('cnpj');
         parent::addAttribute('api_key');
@@ -25,7 +26,7 @@ class Empresas extends TRecord {
         if (empty($apiKey)) {
             throw new Exception("API Key não fornecida.");
         }
-
+        $apiKey = hash('sha256', $apiKey);
         $empresa = Empresas::where('api_key', '=', $apiKey)->first();
 
         if (!$empresa) {

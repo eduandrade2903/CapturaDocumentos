@@ -11,12 +11,26 @@ class UsuariosRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'nome_completo', 'cpf', 'email', 'telefone'];
     // const REST_KEY      = 'public';
 
+    protected string $API_KEY;
+
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
-        
+        $headers = AdiantiCoreApplication::getHeaders();
+        $this->API_KEY = $headers['api_key'] ?? null;
+
+        if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+
         unset($param['class']);
         unset($param['method']);
+
+        if (isset($param['filters']) && is_string($param['filters'])) {
+            $decodedFilters = json_decode($param['filters'], true);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedFilters)) {
+                $param['filters'] = $decodedFilters;
+            }
+        }
         
         
         switch( $method )
@@ -49,21 +63,23 @@ class UsuariosRestService extends AdiantiRecordService
     }
 
 
-    public function create(array $request)    {       
-        $headers = AdiantiCoreApplication::getHeaders();
-        $apiKey = $headers['api_key'] ?? null;
-
+    public function create(array $request)
+    {
         try {
             TTransaction::open('data');
-            $empresa = Empresas::getEmpresaByApiKey($apiKey);
+            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
             $empresa->isEmpresaExistente($empresa->id); // Verifica se a empresa existe antes de criar o usuário
-
             $usuario = new Usuarios();
             $usuario->fromArray($request['data'] ?? []);
             $usuario->store(); // Chama o método verifica() para validar os campos obrigatórios
 
             
             $coletaRegistrada = CollectionRequest::registra($empresa->id ?? null, $usuario->id ?? null, 'pendente');
+            
+            if(empty($request['data']['tipos_documentos'])) throw new Exception("Nenhum tipo de documento foi informado para o usuário.");
+           
+            CollectionRequestDocumentos::criaCollectionDocumento($coletaRegistrada['model']->id, $request['data']['tipos_documentos']);
+            
 
             TTransaction::close();
             http_response_code(201);
@@ -77,7 +93,10 @@ class UsuariosRestService extends AdiantiRecordService
         }catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(400);
-            throw new Exception('Erro ao criar usuário: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'data'   => 'Erro ao criar usuário: ' . $e->getMessage()
+            ];
         }
     }
 

@@ -1,0 +1,1319 @@
+openapi: 3.0.0
+info:
+  title: API de Captura de Documentos
+  description: |
+    API REST para gestão de empresas parceiras, cadastro de usuários titulares, controle de solicitações de coleta de documentos e histórico de Webhooks.
+    
+    ### Mecanismos de Autenticação
+    As rotas estão protegidas por uma camada dupla de segurança:
+    1. **Autenticação de Gateway (rest.php):** Necessária para a segurança do framework Adianti. Pode ser feita via **Basic Auth** (utilizando a chave REST global da aplicação) ou **Bearer Token** (utilizando o token JWT retornado pelo endpoint `/auth`).
+    2. **Autenticação de Domínio (api_key):** Exigida na maioria das rotas do negócio através do cabeçalho `api_key`, identificando a empresa parceira ativa e isolando seus dados.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/
+    description: Servidor de Desenvolvimento Local (Via rest.php)
+  - url: http://localhost:8080/
+    description: Servidor de Desenvolvimento Local (Via restp.php - público para registros baseados em Active Record)
+
+security:
+  - basicAuth: []
+    apiKeyHeader: []
+  - bearerAuth: []
+    apiKeyHeader: []
+
+paths:
+  /auth/{login}/{password}:
+    get:
+      tags:
+        - Auth
+      summary: Obter Token JWT (Login)
+      description: |
+        Autentica o usuário no painel administrativo e gera um token JWT (JSON Web Token) válido por 3 horas.
+        
+        **Atenção:** Como esta rota é processada pelo `rest.php`, ela requer o cabeçalho de autenticação básica `Authorization: Basic <REST_KEY>` para passar pelo gateway do framework, além do login e senha do usuário passados no path.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: login
+          in: path
+          required: true
+          description: E-mail ou Login cadastrado do usuário
+          schema:
+            type: string
+            example: contato@empresa.com.br
+        - name: password
+          in: path
+          required: true
+          description: Senha de acesso do usuário
+          schema:
+            type: string
+            example: Abcd@1234
+      responses:
+        '200':
+          description: Token JWT gerado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: string
+                    description: Token JWT codificado em HS256
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiY29udGF0b0BlbXByZXNhLmNvbS5iciIsInVzZXJpZCI6MTUsInVzZXJuYW1lIjoiVGVjaCBJbm92YcOnw7VlcyIsInVzZXJtYWlsIjoiY29udGF0b0BlbXByZXNhLmNvbS5iciIsImV4cGlyZXMiOjE3OTIxNjYwMDB9.signature
+        '401':
+          description: Falha de autenticação (usuário ou senha incorretos)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno no servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /empresas:
+    post:
+      tags:
+        - Empresas
+      summary: Cadastrar Nova Empresa
+      description: |
+        Cadastra uma nova empresa parceira no sistema, cria seu usuário de acesso ao painel de administração e envia as credenciais/chaves por e-mail.
+        
+        **Atenção:** Esta rota pública do negócio não requer o cabeçalho `api_key`. A chave de API gerada para a empresa será enviada para o e-mail de contato cadastrado.
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  required:
+                    - razao_social
+                    - cnpj
+                    - nome_contato
+                    - email
+                  properties:
+                    razao_social:
+                      type: string
+                      description: Razão social completa da empresa
+                      example: Tech Inovações LTDA
+                    cnpj:
+                      type: string
+                      description: CNPJ da empresa (com ou sem pontuação)
+                      example: "12.345.678/0001-90"
+                    nome_contato:
+                      type: string
+                      description: Nome da pessoa de contato principal
+                      example: Carlos Eduardo
+                    email:
+                      type: string
+                      format: email
+                      description: E-mail da empresa para contato e login administrativo
+                      example: contato@techinovacoes.com.br
+                    telefone:
+                      type: string
+                      description: Telefone comercial
+                      example: "(11) 98765-4321"
+                    webhook_url:
+                      type: string
+                      format: uri
+                      description: URL HTTP(S) onde os eventos assíncronos serão disparados
+                      example: https://api.techinovacoes.com.br/webhooks/captura
+      responses:
+        '201':
+          description: Empresa criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Empresa criada com sucesso. Verifique seu e-mail.
+        '400':
+          description: Dados obrigatórios inválidos ou ausentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro ao cadastrar empresa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Empresas
+      summary: Consultar Empresa
+      description: Retorna os dados cadastrais da empresa associada à chave de API (`api_key`) enviada nos cabeçalhos.
+      responses:
+        '200':
+          description: Dados cadastrais da empresa retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      empresa:
+                        $ref: '#/components/schemas/Empresa'
+        '403':
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Empresa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Empresas
+      summary: Atualizar Dados da Empresa
+      description: Atualiza os dados cadastrais da empresa associada à chave de API enviada nos cabeçalhos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  properties:
+                    nome_contato:
+                      type: string
+                      example: Carlos Eduardo Silva
+                    telefone:
+                      type: string
+                      example: "(11) 99999-8888"
+                    webhook_url:
+                      type: string
+                      format: uri
+                      example: https://nova-api.techinovacoes.com.br/webhooks
+      responses:
+        '200':
+          description: Dados atualizados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      empresa:
+                        $ref: '#/components/schemas/Empresa'
+        '403':
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Empresa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuarios:
+    post:
+      tags:
+        - Usuarios
+      summary: Cadastrar Novo Usuário
+      description: |
+        Cadastra um novo usuário para a empresa solicitante, enviando `tipos_documentos` na requisição e dispara a criação da solicitação de coleta automática. Retorna o token único para link da jornada de captura.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  required:
+                    - nome_completo
+                    - cpf
+                    - email
+                    - telefone
+                    - tipos_documentos
+                  properties:
+                    nome_completo:
+                      type: string
+                      description: Nome completo do usuário.
+                      example: Maria Oliveira Souza
+                    cpf:
+                      type: string
+                      description: CPF do usuário (deve ser único no sistema).
+                      example: "12345678901"
+                    email:
+                      type: string
+                      format: email
+                      description: E-mail do usuário.
+                      example: maria.souza@email.com
+                    telefone:
+                      type: string
+                      description: Telefone com DDD do usuário.
+                      example: "11988887777"
+                    tipos_documentos:
+                      type: array
+                      description: Array de tipos de documentos a serem capturados.
+                      items:
+                        type: string
+                        enum:
+                          - "1 - RG / CIN"
+                          - "2 - CPF"
+                          - "3 - CERTIDAO DE NASCIMENTO"
+                          - "4 - CNH"
+                          - "5 - CARTEIRA DE TRABALHO"
+                          - "6 - COMPROVANTE DE ENDERECO"
+                          - "7 - HISTORICO ESCOLAR - ENSINO MEDIO"
+                          - "8 - HISTORICO ESCOLAR - ENSINO FUNDAMENTAL"
+                          - "9 - RESERVISTA OU CERTIFICADO DE DISPENSA"
+                          - "10 - CERTIDAO DE CASAMENTO"
+                          - "11 - CERTIDAO DE OBITO"
+                          - "12 - TITULO DE ELEITOR"
+                          - "13 - CERTIDAO DE QUITACAO ELEITORAL"
+                          - "14 - PIS PASEP NIT"
+                          - "15 - COMPROVANTE DE ESCOLARIDADE"
+                          - "16 - COMPROVANTE DE CONTA BANCARIA"
+                          - "17 - CERTIDAO DE UNIAO ESTAVEL"
+                          - "18 - CERTIDAO DE NASCIMENTO DE DEPENDENTE"
+                          - "19 - CPF DE DEPENDENTE"
+                          - "20 - DOCUMENTO DE IDENTIFICACAO DO DEPENDENTE"
+                          - "21 - CURRICULO"
+                          - "22 - REGISTRO PROFISSIONAL"
+                          - "23 - CERTIDAO DE ANTECEDENTES CRIMINAIS"
+                          - "24 - EXAME ADMISSIONAL"
+                          - "25 - COMPROVANTE DE EXPERIENCIA PROFISSIONAL"
+                          - "26 - PASSAPORTE"
+                          - "27 - DOCUMENTO DE IDENTIFICACAO DE ESTRANGEIRO"
+                          - "28 - CERTIFICADO DE CURSO"
+                          - "29 - DIPLOMA"
+                          - "30 - FOTO 3X4"
+                      example: ["1", "2", "4", "6"]
+      responses:
+        '201':
+          description: Usuário cadastrado e solicitação de coleta iniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Usuário criado com sucesso
+                      data:
+                        $ref: '#/components/schemas/Usuario'
+                      token:
+                        type: object
+                        properties:
+                          token_unico:
+                            type: string
+                            description: Hash SHA256 do token único da jornada de coleta
+                            example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        '400':
+          description: "Validação falhou (ex: CPF já cadastrado) ou campos obrigatórios ausentes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Usuarios
+      summary: Listar Todos os Usuários
+      description: Retorna uma lista de usuários cadastrados que pertencem ao escopo geral do sistema. Suporta parâmetros de paginação e filtragem do Adianti.
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/direction'
+        - $ref: '#/components/parameters/filters'
+      responses:
+        '200':
+          description: Lista de usuários carregada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Usuario'
+        '500':
+          description: Erro interno ao listar usuários
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Usuarios
+      summary: Excluir Usuários em Lote
+      description: Remove múltiplos usuários baseando-se nos filtros informados via query string.
+      parameters:
+        - $ref: '#/components/parameters/filters'
+      responses:
+        '200':
+          description: Usuários deletados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: integer
+                    description: Número de usuários excluídos
+                    example: 3
+
+  /usuarios/{id}:
+    get:
+      tags:
+        - Usuarios
+      summary: Buscar Usuário por ID
+      description: Retorna os dados detalhados de um titular de documentos específico.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do usuário titular
+          schema:
+            type: integer
+            example: 42
+      responses:
+        '200':
+          description: Dados do usuário retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      data:
+                        $ref: '#/components/schemas/Usuario'
+        '500':
+          description: Usuário não encontrado ou erro de transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Usuarios
+      summary: Atualizar Usuário por ID
+      description: Atualiza as informações pessoais do titular especificado pelo ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do usuário
+          schema:
+            type: integer
+            example: 42
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - data
+              properties:
+                id:
+                  type: integer
+                  description: ID do usuário a ser atualizado.
+                  example: 42
+                data:
+                  type: object
+                  properties:
+                    nome_completo:
+                      type: string
+                      example: Maria Oliveira Silva
+                    email:
+                      type: string
+                      format: email
+                      example: maria.silva@email.com
+                    telefone:
+                      type: string
+                      example: "11977776666"
+      responses:
+        '200':
+          description: Usuário atualizado com sucesso no banco de dados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: string
+                    nullable: true
+                    description: O controller não retorna nenhum objeto na resposta PUT
+                    example: null
+        '500':
+          description: Usuário não encontrado para atualização
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Usuarios
+      summary: Excluir Usuário por ID
+      description: Remove um único titular de documentos pelo ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do usuário
+          schema:
+            type: integer
+            example: 42
+      responses:
+        '200':
+          description: Usuário deletado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: string
+                    nullable: true
+                    example: null
+
+  /collections:
+    post:
+      tags:
+        - Collections
+      summary: Criar Solicitação de Coleta Manual
+      description: |
+        Gera manualmente um token temporário de captura vinculando um usuário a uma empresa contratante.
+        
+        **Atenção:** Devido a um problema lógico no código original (`CollectionRequest::registrar()`), a execução deste endpoint manual causa erro de compilação interna no PHP. Recomenda-se utilizar o fluxo de criação automática via cadastro de usuários (`POST /usuarios`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - empresa_id
+                - usuario_id
+              properties:
+                empresa_id:
+                  type: integer
+                  description: ID numérico da empresa parceira
+                  example: 1
+                usuario_id:
+                  type: integer
+                  description: ID numérico do usuário titular cadastrado
+                  example: 42
+                status:
+                  type: string
+                  description: Status da coleta
+                  default: pendente
+                  example: pendente
+      responses:
+        '201':
+          description: Solicitação de coleta criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Solicitação de coleta criada com sucesso
+                      data:
+                        $ref: '#/components/schemas/CollectionRequest'
+        '400':
+          description: Erro na validação dos IDs ou erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Collections
+      summary: Listar Solicitações de Coleta
+      description: Lista todas as solicitações de coleta registradas no sistema (suporta paginação/filtros do Adianti).
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/direction'
+        - $ref: '#/components/parameters/filters'
+      responses:
+        '200':
+          description: Lista de solicitações de coleta retornada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollectionRequest'
+
+    delete:
+      tags:
+        - Collections
+      summary: Excluir Solicitações em Lote
+      description: Remove solicitações de coleta em massa de acordo com as condições passadas nos filtros.
+      parameters:
+        - $ref: '#/components/parameters/filters'
+      responses:
+        '200':
+          description: Coletas excluídas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: integer
+                    description: Quantidade de registros excluídos
+                    example: 5
+
+  /collections/{id}:
+    get:
+      tags:
+        - Collections
+      summary: Buscar Solicitação de Coleta por ID
+      description: Obtém os detalhes de um pedido de captura de documentos específico.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da solicitação de coleta
+          schema:
+            type: integer
+            example: 18
+      responses:
+        '200':
+          description: Solicitação de coleta encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      data:
+                        $ref: '#/components/schemas/CollectionRequest'
+        '400':
+          description: ID de solicitação inválido ou não encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Solicitação de coleta com ID 18 não encontrada.
+
+    put:
+      tags:
+        - Collections
+      summary: Atualizar Solicitação de Coleta por ID
+      description: Atualiza os dados de uma solicitação de coleta (por exemplo, mudando o status).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da solicitação de coleta
+          schema:
+            type: integer
+            example: 18
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      description: Novo status da solicitação (ex. sucesso, rejeitado)
+                      example: sucesso
+      responses:
+        '200':
+          description: Solicitação de coleta atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/CollectionRequest'
+
+    delete:
+      tags:
+        - Collections
+      summary: Excluir Solicitação de Coleta por ID
+      description: Remove uma única solicitação de coleta pelo seu ID do banco.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do registro a ser removido
+          schema:
+            type: integer
+            example: 18
+      responses:
+        '200':
+          description: Registro excluído
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: string
+                    nullable: true
+                    example: null
+
+  /collections/{token_unico}:
+    get:
+      tags:
+        - Collections
+      summary: Buscar Solicitação de Coleta por Token Único
+      description: |
+        Retorna os detalhes de uma solicitação de coleta (CollectionRequest) e seus respectivos documentos exigidos, buscando pelo token único seguro de 24 horas gerado para a jornada.
+      parameters:
+        - name: token_unico
+          in: path
+          required: true
+          description: Token único (UUID/hash) da solicitação de coleta
+          schema:
+            type: string
+            example: e3b0c442-98fc-1c14-9afb-f4c8996fb924
+      responses:
+        '200':
+          description: Solicitação de coleta encontrada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/CollectionRequest'
+                      - type: object
+                        properties:
+                          documentos:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/CollectionRequestDocumento'
+        '400':
+          description: Token não encontrado ou erro na transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhook-events:
+    get:
+      tags:
+        - WebhookEvents
+      summary: Listar Eventos de Webhook da Empresa
+      description: Retorna a lista completa de eventos que foram disparados para a empresa ativa (determinada através da `api_key` do cabeçalho).
+      responses:
+        '200':
+          description: Lista de eventos do Webhook carregada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/WebhookEvent'
+        '403':
+          description: Chave de API inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nenhum evento encontrado para a empresa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documentos:
+    get:
+      tags:
+        - Documentos
+      summary: Retornar solicitação de coleta e documentos exigidos
+      description: |
+        Retorna o status da solicitação de documentos e a lista de documentos (inputs) que o Frontend precisa renderizar para o usuário com base no `token_unico`.
+      security:
+        - basicAuth: []
+          apiKeyHeader: []
+        - bearerAuth: []
+          apiKeyHeader: []
+      parameters:
+        - name: token_unico
+          in: query
+          required: true
+          description: O token gerado no momento da criação do usuário.
+          schema:
+            type: string
+            example: "abc123xyz890"
+      responses:
+        '200':
+          description: Status da solicitação e documentos exigidos retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      request_id:
+                        type: integer
+                        example: 1054
+                      token_unico:
+                        type: string
+                        example: "abc123xyz890"
+                      status_request:
+                        type: string
+                        example: "pendente"
+                      data_expiracao:
+                        type: string
+                        format: date-time
+                        example: "2026-08-30T23:59:59"
+                      documentos_exigidos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            tipo_documento_id:
+                              type: integer
+                              example: 1
+                            descricao:
+                              type: string
+                              example: "Documento de Identidade (RG)"
+                            status:
+                              type: string
+                              example: "pendente"
+        '400':
+          description: Ausência do token_unico ou formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: token_unico inválido, expirado ou não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno no servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Documentos
+      summary: Enviar Documentos da Coleta (Multipart / Form-Data ou JSON)
+      description: |
+        Recebe os arquivos enviados pelo usuário (como `multipart/form-data` ou Base64), vincula-os aos respectivos tipos de documentos exigidos, salva os arquivos no servidor e atualiza a base de dados.
+      security:
+        - basicAuth: []
+          apiKeyHeader: []
+        - bearerAuth: []
+          apiKeyHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - token_unico
+              properties:
+                token_unico:
+                  type: string
+                  description: Token de identificação da CollectionRequest.
+                  example: "abc123xyz890"
+                extracted_data:
+                  type: string
+                  description: "JSON String ou objeto com dados extraídos (OCR)."
+                  example: '{"nome": "ana", "cpf": "129873"}'
+                documentos[1]:
+                  type: string
+                  format: binary
+                  description: Arquivo do tipo de documento ID 1 (ex. RG)
+                documentos[3]:
+                  type: string
+                  format: binary
+                  description: Arquivo do tipo de documento ID 2 (ex. Comprovante de Residência)
+          application/json:
+            schema:
+              type: object
+              required:
+                - token_unico
+              properties:
+                token_unico:
+                  type: string
+                  description: Token de identificação da CollectionRequest.
+                  example: "abc123xyz890"
+                extracted_data:
+                  type: object
+                  description: Objeto de dados extraídos (OCR).
+                  example:
+                    nome: "ana"
+                    cpf: "129873"
+                files:
+                  type: array
+                  description: Array de arquivos codificados em Base64.
+                  items:
+                    type: object
+                    required:
+                      - tipo_documento_id
+                      - file
+                    properties:
+                      tipo_documento_id:
+                        type: integer
+                        example: 1
+                      file:
+                        type: string
+                        description: Conteúdo do arquivo em Base64
+                        example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+      responses:
+        '201':
+          description: Documentos enviados e salvos com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Documentos enviados e salvos com sucesso.
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Documento'
+        '400':
+          description: Formato inválido, ausência do token_unico ou nenhum arquivo enviado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Chave de API inválida ou não fornecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: token_unico inválido, expirado ou não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Tipo de documento enviado não corresponde aos solicitados em CollectionRequestDocumentos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno no servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Autenticação de gateway do framework. Insira o valor completo no formato exato: `Basic <REST_KEY>` (em texto claro, sem codificação Base64).
+        Exemplo: `Basic minha_rest_key_aqui`
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT fornecido pelo endpoint `/auth/{login}/{password}` para autenticação dinâmica.
+    apiKeyHeader:
+      type: apiKey
+      in: header
+      name: api_key
+      description: Chave secreta de acesso exclusiva da empresa parceira, enviada no cabeçalho `api_key`.
+
+  parameters:
+    limit:
+      name: limit
+      in: query
+      required: false
+      description: Limite de registros a retornar (para paginação)
+      schema:
+        type: integer
+        example: 10
+    offset:
+      name: offset
+      in: query
+      required: false
+      description: Deslocamento inicial de registros (para paginação)
+      schema:
+        type: integer
+        example: 0
+    order:
+      name: order
+      in: query
+      required: false
+      description: Nome do campo pelo qual ordenar a listagem
+      schema:
+        type: string
+        example: id
+    direction:
+      name: direction
+      in: query
+      required: false
+      description: Direção da ordenação (asc ou desc)
+      schema:
+        type: string
+        enum: [asc, desc]
+        example: asc
+    filters:
+      name: filters
+      in: query
+      required: false
+      description: |
+        Filtros estruturados para listagem. Pode ser enviado de duas formas:
+        1. Como string JSON representando o array de filtros (ex: `[["status", "=", "pendente"]]` ou `["status", "=", "pendente"]`).
+        2. Formato tradicional de array PHP de query string (ex: `filters[0][0]=status&filters[0][1]==&filters[0][2]=pendente`).
+      schema:
+        type: string
+        example: '[["status", "=", "pendente"]]'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        data:
+          type: string
+          description: Mensagem de erro ou descrição da exceção
+          example: Chave de API invalida.
+
+    Usuario:
+      type: object
+      required:
+        - id
+        - nome_completo
+        - cpf
+        - email
+        - telefone
+      properties:
+        id:
+          type: integer
+          example: 42
+        nome_completo:
+          type: string
+          example: Maria Oliveira Souza
+        cpf:
+          type: string
+          example: "12345678901"
+        email:
+          type: string
+          format: email
+          example: maria.souza@email.com
+        telefone:
+          type: string
+          example: "11988887777"
+
+    Empresa:
+      type: object
+      properties:
+        system_user_id:
+          type: integer
+          description: ID do usuário vinculado no painel administrativo
+          example: 15
+        razao_social:
+          type: string
+          example: Tech Inovações LTDA
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        nome_contato:
+          type: string
+          example: Carlos Eduardo
+        email:
+          type: string
+          format: email
+          example: contato@techinovacoes.com.br
+        telefone:
+          type: string
+          example: "(11) 98765-4321"
+        webhook_url:
+          type: string
+          format: uri
+          example: https://api.techinovacoes.com.br/webhooks/captura
+        data_cadastro:
+          type: string
+          example: "2026-07-27 10:00:00"
+
+    CollectionRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 18
+        empresa_id:
+          type: integer
+          example: 1
+        usuario_id:
+          type: integer
+          example: 42
+        token_unico:
+          type: string
+          description: Hash SHA256 do token único gerado para capturas de fotos
+          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        status:
+          type: string
+          description: Status atual do ciclo de vida da coleta
+          example: pendente
+        data_criacao:
+          type: string
+          example: "2026-07-27 11:35:00"
+        data_expiracao:
+          type: string
+          example: "2026-07-28 11:35:00"
+
+    CollectionRequestDocumento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        request_id:
+          type: integer
+          description: ID da solicitação de coleta vinculada
+          example: 18
+        tipo_documento_id:
+          type: integer
+          description: ID do tipo de documento exigido
+          example: 2
+        status:
+          type: string
+          description: Status de upload do documento específico
+          example: pendente
+        data_criacao:
+          type: string
+          description: Data de criação do registro de documento
+          example: "2026-07-27 11:35:00"
+
+    WebhookEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "101"
+        empresa_id:
+          type: string
+          example: "1"
+        tipo_evento:
+          type: string
+          description: Tipo de evento registrado
+          example: document.uploaded
+        payload:
+          type: string
+          description: String contendo o objeto JSON serializado do payload do evento
+          example: '{"solicitacao_id": 18, "usuario_id": 42, "documento": "cnh.pdf", "status": "sucesso"}'
+        status_envio:
+          type: string
+          description: Status do envio assíncrono para a empresa
+          example: sucesso
+        tentativas:
+          type: string
+          description: Quantidade de tentativas de disparo do webhook
+          example: "1"
+        criado_em:
+          type: string
+          example: "2026-07-27 12:00:00"
+
+    Documento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        request_id:
+          type: integer
+          description: ID da solicitação de coleta vinculada (CollectionRequest ID)
+          example: 18
+        tipo_documento_id:
+          type: integer
+          description: ID do tipo de documento
+          example: 1
+        storage_path:
+          type: string
+          description: Caminho de armazenamento do arquivo no servidor
+          example: tmp/doc_18_1_1691350800_64cf7a2b.jpg
+        status:
+          type: string
+          description: Status de upload do documento
+          example: enviado
+        motivo_rejeicao:
+          type: string
+          nullable: true
+          description: Motivo da rejeição (se houver)
+          example: null
+        data_upload:
+          type: string
+          description: Data e hora do envio do arquivo
+          example: "2026-08-06 12:15:00"

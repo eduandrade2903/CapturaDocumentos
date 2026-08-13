@@ -83,15 +83,15 @@
         </menu>
     </menuitem>
         
-    <menuitem label='Common pages'>
+    <menuitem label='Menu'>
         <menu>
-            <menuitem label='Common page 1'>
+            <menuitem label='Perfil'>
                 <icon></icon>
-                <action>CommonPage</action>
+                <action>EmpresasPage</action>
             </menuitem>
-            <menuitem label='Common page 2'>
+            <menuitem label='Usuarios'>
                 <icon></icon>
-                <action>CommonPage</action>
+                <action>UsuariosPage</action>
             </menuitem>
             <menuitem label='Common page 3'>
                 <icon></icon>
