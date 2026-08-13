@@ -21,7 +21,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['api_key'] ?? null;
+        $this->API_KEY = $headers['Api-Key'] ?? null;
         
         if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
 
@@ -52,13 +52,12 @@ class CollectionRequestsRestService extends AdiantiRecordService
         switch( $method )
         {
             case 'GET':
-                if (!empty($param['id']))
-                {
-                    return $this->getById($param);
-                } elseif (!empty($param['token_unico'])) {
-                    return $this->getByTokenUnico($param);
+                if (!empty($param['token'])) {
+                    return $this->getByToken($param['token']);
+                } elseif (!empty($param['id'])) {
+                    //return $this->getCollectionRequestDocumentosById($param);
                 } else {
-                    return $this->loadAll($param);
+                    //return $this->getCollectionRequestDocumentos($param);
                 }
                 break;
             case 'POST':
@@ -132,34 +131,56 @@ class CollectionRequestsRestService extends AdiantiRecordService
         }
     }
 
-    public function getByTokenUnico($param) {
+    public static function getByToken($param)
+    {
         try {
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::getByToken($param['token_unico']);
 
-            $dados = $collectionRequest;
+            $token = $param ?? null;
 
-            if ($collectionRequest){
-                $collectionRequestDocumentos = CollectionRequestDocumentos::where('request_id', '=', $collectionRequest['id'])->load();
-                $documentos = Documentos::where('request_id', '=', $collectionRequest['id'])->load();
-
-                $dados['documentos_solicitados'] = array_map(function($item) {
-                    return $item->toArray();
-                }, $collectionRequestDocumentos);
-
-                $dados['documentos_enviados'] = array_map(function($item) {
-                    return $item->toArray();
-                }, $documentos);
-
-                if(empty($dados['documentos_enviados'])) { $dados['documentos_enviados'] = 'Nenhum documento enviado.'; }
-            } else {
-                throw new Exception("Token não encontrado.");
+            if (is_null($token)) {
+                throw new Exception("Token de solicitação não fornecido.");
             }
+
+            // 1. Busca a requisição pai pelo token_unico
+            $request = CollectionRequest::where('token_unico', '=', $token)->first();
+
+            if (!$request) {
+                throw new Exception("Solicitação não encontrada.");
+            }
+
+            // 2. Valida expiração (Data atual vs Data de expiração)
+            if (strtotime($request->data_expiracao) < time()) {
+                throw new Exception("Esta solicitação já expirou.");
+            }
+
+            // 3. Busca os documentos atrelados a essa requisição (id 6 no seu exemplo)
+            $documentos = CollectionRequestDocumentos::where('request_id', '=', $request->id)->load();
+
+            // 4. Formata os documentos trazendo também os dados de TiposDocumentos
+            $documentosFormatados = [];
+            foreach ($documentos as $doc) {
+                $tipoDoc = TiposDocumentos::find($doc->tipo_documento_id);
+
+                $documentosFormatados[] = [
+                    'id' => $doc->id,
+                    'request_id' => $doc->request_id,
+                    'tipo_documento_id' => $doc->tipo_documento_id,
+                    'status' => $doc->status,
+                    'data_criacao' => $doc->data_criacao,
+                    'tipo_documento' => $tipoDoc ? [
+                        'id' => $tipoDoc->id,
+                        'nome' => $tipoDoc->nome,
+                        'descricao' => $tipoDoc->descricao,
+                    ] : null
+                ];
+            }
+
             TTransaction::close();
 
             return [
                 'status' => 'success',
-                'data' => $dados
+                'data' => $documentosFormatados
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
