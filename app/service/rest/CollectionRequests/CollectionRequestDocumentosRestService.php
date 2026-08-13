@@ -63,21 +63,60 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
     public static function getCollectionRequestDocumentosById($param)
     {
         try {
-            $id = $param['id'] ?? null;
+            TTransaction::open('data');
 
-            if (is_null($id)) {
-                throw new Exception("ID do documento da solicitação de coleta não fornecido.");
+            $token = $param['token'] ?? null;
+            if (is_null($token)) {
+                throw new Exception("Token não fornecido.");
             }
 
-            $collectionRequestDocumento = CollectionRequestDocumentos::find($id);
-
-            if (!$collectionRequestDocumento) {
-                throw new Exception("Documento da solicitação de coleta não encontrado.");
+            $request = CollectionRequest::where('token_unico', '=', $token)->first();
+            if (!$request) {
+                throw new Exception("Solicitação não encontrada.");
             }
 
-            return $collectionRequestDocumento;
+            // 1. Busca todos os documentos da requisição em 1 query
+            $documentos = CollectionRequestDocumentos::where('collection_request_id', '=', $request->id)->load();
+
+            if (empty($documentos)) {
+                TTransaction::close();
+                return ['status' => 'success', 'data' => []];
+            }
+
+            // 2. Extrai todos os IDs de tipos e busca TODOS em uma única query SQL (evita o loop N+1)
+            $tiposIds = array_unique(array_map(fn($d) => $d->tipo_documento_id, $documentos));
+            $tiposObjetos = TiposDocumentos::where('id', 'in', $tiposIds)->load();
+
+            // Mapeia os tipos por ID para busca instantânea
+            $tiposIndexados = [];
+            foreach ($tiposObjetos as $tipo) {
+                $tiposIndexados[$tipo->id] = [
+                    'id' => $tipo->id,
+                    'nome' => $tipo->nome,
+                    'descricao' => $tipo->descricao,
+                    'ativo' => (bool)$tipo->ativo
+                ];
+            }
+
+            // 3. Monta o resultado final sem consultas extras ao banco
+            $documentosFormatados = [];
+            foreach ($documentos as $doc) {
+                $documentosFormatados[] = [
+                    'id' => $doc->id,
+                    'request_id' => $doc->collection_request_id,
+                    'tipo_documento_id' => $doc->tipo_documento_id,
+                    'status' => $doc->status,
+                    'data_criacao' => $doc->data_criacao,
+                    'tipo_documento' => $tiposIndexados[$doc->tipo_documento_id] ?? null
+                ];
+            }
+
+            TTransaction::close();
+            return ['status' => 'success', 'data' => $documentosFormatados];
         } catch (Exception $e) {
-            throw new Exception("Erro ao buscar documento da solicitação de coleta: " . $e->getMessage());
+            TTransaction::rollback();
+            http_response_code(400);
+            return ['status' => 'error', 'message' => $e->getMessage()];
         }
     }
 
