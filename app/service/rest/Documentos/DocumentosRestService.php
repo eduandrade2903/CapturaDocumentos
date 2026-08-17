@@ -28,6 +28,10 @@ class DocumentosRestService extends AdiantiRecordService
             throw new Exception('Sem autorizacao.');
         }
 
+        if ($param['ia'] == 'true') {
+            return $this->analizer($param);
+        }
+
         unset($param['class']);
         unset($param['method']);
 
@@ -418,4 +422,66 @@ class DocumentosRestService extends AdiantiRecordService
 
         return $destinationPath;
     }
+
+    /**
+     * Recebe a imagem e o tipo do documento para ser analizado pela IA.
+     */
+    private function analizer($param)
+    {
+        try {
+            // Verifica se o arquivo e o ID foram enviados
+            if (empty($_FILES['file']) || empty($_POST['tipo_documento_id'])) {
+                throw new Exception("Arquivo ou tipo de documento ausente.");
+            }
+
+            $file = $_FILES['file'];
+            $tipoDocumentoId = (int) $_POST['tipo_documento_id'];
+
+            // Opcional: Validar se é uma imagem ou PDF antes de mandar pra IA
+            
+            // Aciona nossa Service
+            $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($file, $tipoDocumentoId);
+
+            if ($resultadoAnalise['CODIGO'] === '200') {
+                // Sucesso: A IA confirmou que é o documento certo
+                // Aqui você pode salvar o arquivo em disco/S3 e gravar no banco
+                
+                // Remove o código do array para deixar só os dados extraídos, se preferir
+                unset($resultadoAnalise['CODIGO']); 
+                
+                http_response_code(201);
+                return [
+                    'status' => 'success',
+                    'message' => 'Documento validado com sucesso!',
+                    'dados_extraidos' => $resultadoAnalise
+                ];
+                // echo json_encode([
+                //     'status' => 'success', 
+                //     'message' => 'Documento validado com sucesso!',
+                //     'dados_extraidos' => $resultadoAnalise
+                // ]);
+            } elseif($resultadoAnalise['CODIGO'] === '404') {
+                http_response_code(422);
+                return [
+                    'status' => 'fail',
+                    'message'=> 'Documento Incorreto.',
+                    'motivo_rejeicao' => $resultadoAnalise['CODIGO']
+                ];
+            } else {
+                return [
+                    'status' => 'error',
+                    'message' => 'Erro interno.',
+                    'motivo_rejeicao' => $resultadoAnalise['ERRO']
+                ];
+            }
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            return [
+                'status' => 'error',
+                'message' => 'ERRO NO SERIVDOR: '. $e->getMessage()
+            ];
+        }
+    }
+
 }

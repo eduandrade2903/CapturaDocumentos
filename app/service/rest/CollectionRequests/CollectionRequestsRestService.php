@@ -21,7 +21,7 @@ class CollectionRequestsRestService extends AdiantiRecordService
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
-        $this->API_KEY = $headers['Api-Key'] ?? null;
+        $this->API_KEY = $headers['api_key'] ?? null;
         
         if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
 
@@ -52,8 +52,8 @@ class CollectionRequestsRestService extends AdiantiRecordService
         switch( $method )
         {
             case 'GET':
-                if (!empty($param['token'])) {
-                    return $this->getByToken($param['token']);
+                if (!empty($param['token_unico'])) {
+                    return $this->getByTokenUnico($param);
                 } elseif (!empty($param['id'])) {
                     //return $this->getCollectionRequestDocumentosById($param);
                 } else {
