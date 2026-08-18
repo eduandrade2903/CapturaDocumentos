@@ -14,7 +14,7 @@ class Processo extends TRecord
     {
         parent::__construct($id, $ObjectLoad);
         parent::addAttribute('nome_completo');
-        parent::addAttribute('cpf');
+        parent::addAttribute('num_documento');
         parent::addAttribute('email');
         parent::addAttribute('telefone');
     }
@@ -27,11 +27,11 @@ class Processo extends TRecord
 
     public function verifica()
     {
-        if (empty($this->nome_completo) || empty($this->cpf)) {
+        if (empty($this->nome_completo) || empty($this->num_documento)) {
             return false;
         }
-        if (Processo::where('cpf', '=', $this->cpf)->first()) {
-            throw new Exception("CPF já cadastrado no sistema.");
+        if (Processo::where('num_documento', '=', $this->num_documento)->first()) {
+            throw new Exception("Número do documento já cadastrado no sistema.");
         }
         return true;
     }

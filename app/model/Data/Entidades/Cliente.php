@@ -5,7 +5,7 @@ use Adianti\Database\TRecord;
 class Cliente extends TRecord
 {
 
-    const TABLENAME = 'Cliente';
+    const TABLENAME = 'cliente';
     const PRIMARYKEY = 'id';
     const IDPOLICY = 'max';
 
