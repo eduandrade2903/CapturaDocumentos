@@ -1,78 +1,160 @@
-Documentação da API: Serviço de Coleta de Documentos (Onboarding)
+# 📄 Documentação da API: Serviço de Coleta e Análise de Documentos (`DocumentoRestService`)
 
-📌 Visão Geral da Arquitetura O módulo de coleta de documentos baseia-se no fluxo de requisição gerado na criação do usuário.
+[⬅️ Voltar ao Índice Principal](file:///Users/edutronicos/Projetos/capturaDocumentos/Documentacao/README.md)
 
-O backend gera uma CollectionRequest contendo um token_unico e associa múltiplos registros em CollectionRequestDocumentos (tipos de documentos exigidos, ex: RG, CPF).
+## 📌 Visão Geral da Arquitetura
 
-O Frontend consome os dados dessa requisição (via GET) para renderizar dinamicamente os inputs de upload.
+O módulo de coleta e validação de documentos atende ao fluxo de envio dos arquivos por parte do titular e validação em tempo real por Inteligência Artificial / OCR.
 
-O usuário realiza o upload e o Frontend processa e envia via POST (como multipart/form-data).
+1. O backend gera uma `CollectionRequest` contendo um `token_unico` e associa múltiplos registros em `CollectionRequestDocumento` (tipos de documentos exigidos, ex: RG, CPF, CNH).
+2. O Frontend consome os dados dessa requisição (`GET /documento?token_unico=...`) para renderizar dinamicamente os formulários de upload.
+3. O Frontend pode enviar cada foto para validação prévia de IA via `POST /documentosAnalise`.
+4. O titular submete os arquivos finais via `POST /documento` (como `multipart/form-data` ou Base64).
+5. O Backend valida o token, grava os arquivos em disco/storage, vincula ao respectivo `tipo_documento_id`, salva opcionalmente dados de OCR em `extrated_data` e atualiza a situação da coleta.
 
-O Backend (Adianti) valida o token_unico, processa os arquivos para a AWS S3, salva os caminhos no banco de dados vinculando ao respectivo tipo_documento_id e atualiza o status.
+---
 
+## 🔒 Autenticação e Headers
 
-🔒 Autenticação e Headers (Global)
+Todas as requisições exigem os cabeçalhos de segurança:
 
-Todas as requisições para o endpoint /documentos exigem os seguintes cabeçalhos para garantir a segurança da API:
+| Header | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `Authorization` | `string` | Chave de autorização REST Basic ou Token Bearer JWT. |
+| `api_key` | `string` | Chave de segurança da API para validar o cliente parceiro. |
 
-Header              Tipo       Descrição   
-Authorization       string     Token Bearer JWT ou chave de sessão do usuário/sistema.
-api-key.            string.    Chave de segurança da API para validar a origem da aplicação cliente.
+---
 
+## 🛣️ Sumário de Rotas
 
-🛣️ Sumário de Rotas
+### 1. 🔍 Obter Informações da Coleta (`GET /documento`)
 
-1. GET /documentos
+Retorna o status da solicitação de documentos e a lista de tipos de documentos exigidos.
 
-Objetivo: Retornar o status da solicitação de documentos e a lista de documentos (inputs) que o Frontend precisa renderizar para o usuário.
+- **URL**: `https://seu-dominio.com.br/documento`
+- **Método**: `GET`
+- **Query Params**: `token_unico` (string, obrigatório)
 
-URL: [https://seu-dominio.com.br/documentos](https://seu-dominio.com.br/documentos)
-Método: GET
-Query Params: token_unico (string, obrigatório): O token gerado no momento da criação do usuário.
+#### Resposta de Sucesso (`200 OK`)
 
-Resposta de Sucesso (200 OK):JSON{
-  "status": "success",
-  "data": {
-    "request_id": 1054,
-    "token_unico": "abc123xyz890",
-    "status_request": "pendente",
-    "data_expiracao": "2026-08-30T23:59:59",
-    "documentos_exigidos": [
-      {
-        "tipo_documento_id": 1,
-        "descricao": "Documento de Identidade (RG)",
-        "status": "pendente"
-      },
-      {
-        "tipo_documento_id": 2,
-        "descricao": "Comprovante de Residência",
-        "status": "pendente"
-      }
-    ]
+```json
+{
+  "collection_request_id": 18,
+  "token_unico": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "status_request": "pendente",
+  "data_expiracao": "2026-08-30 23:59:59",
+  "documentos_exigidos": [
+    {
+      "tipo_documento_id": 1,
+      "descricao": "RG / CIN",
+      "status": "pendente"
+    },
+    {
+      "tipo_documento_id": 4,
+      "descricao": "CNH",
+      "status": "pendente"
+    }
+  ]
+}
+```
+
+---
+
+### 2. 📤 Enviar Arquivos / Upload (`POST /documento`)
+
+Recebe os arquivos enviados pelo usuário via `multipart/form-data` ou payload JSON com Base64.
+
+- **URL**: `https://seu-dominio.com.br/documento`
+- **Método**: `POST`
+- **Content-Type**: `multipart/form-data` ou `application/json`
+
+#### Formato Multipart (`multipart/form-data`)
+
+| Campo | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `token_unico` | `string` | Token único de identificação da `CollectionRequest`. |
+| `extracted_data` | `string (JSON)` | *(Opcional)* JSON string com dados extraídos pelo OCR. |
+| `documento[{tipo_documento_id}]` | `File` | Arquivo binário enviado. Ex: `documento[1]` para o arquivo do RG. |
+
+#### Formato JSON Base64 (`application/json`)
+
+```json
+{
+  "token_unico": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "files": [
+    {
+      "tipo_documento_id": 1,
+      "file": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+    }
+  ],
+  "extracted_data": {
+    "nome": "Maria Oliveira Souza",
+    "cpf": "12345678901"
   }
 }
+```
 
-2. POST /documentos
+#### Resposta de Sucesso (`201 Created`)
 
-Objetivo: Receber os arquivos enviados pelo usuário, vinculá-los aos seus respectivos tipos, salvar no S3 e atualizar a base de dados.
+```json
+{
+  "status": "success",
+  "message": "Documento enviados e salvos com sucesso.",
+  "data": [
+    {
+      "id": 5,
+      "collection_request_id": 18,
+      "tipo_documento_id": 1,
+      "storage_path": "tmp/doc_18_1_1691350800_64cf7a2b.jpg",
+      "status": "APROVADO",
+      "motivo_rejeicao": null,
+      "data_upload": "2026-08-18 12:00:00"
+    }
+  ]
+}
+```
 
-URL: [https://seu-dominio.com.br/documentos](https://seu-dominio.com.br/documentos)
-Método: POST
-Content-Type: multipart/form-data
+---
 
-Payload (FormData)
-Como a requisição exige envio de arquivos físicos simultaneamente com dados textuais, o Frontend deve construir um objeto FormData.
+### 3. 🤖 Analisar Documento com IA (`POST /documentosAnalise`)
 
-Campo no FormData                       Tipo                Descrição
-token_unico.                            string              Token de identificação da CollectionRequest.
-extracted_data                          JSON String         Objeto ou array de strings com dados extraídos. Ex: 
-                                                            {"nome": "ana", "cpf": "129873"} ou ["nome: ana", "cpf: 129873"]. O backend fará o json_decode.
-documentos[{tipo_documento_id}]         File (Binário)      O arquivo físico em si. A chave do input deve conter o ID do tipo 
-                                                            de documento. Exemplo: documentos[1] para o arquivo do RG.
+Valida se a foto enviada confere com o tipo esperado e extrai dados cadastrais via OCR inteligente.
 
+- **URL**: `https://seu-dominio.com.br/documentosAnalise` (ou `https://seu-dominio.com.br/documento?ia=true`)
+- **Método**: `POST`
+- **Content-Type**: `multipart/form-data`
 
+#### Campos do FormData
 
-Respostas de Erro Comuns:
-400 Bad Request: Formato inválido ou ausência do token_unico.
-404 Not Found: token_unico inválido, expirado ou não encontrado na tabela CollectionRequest.
-422 Unprocessable Entity: Tipo de documento enviado não corresponde aos solicitados em CollectionRequestDocumentos.
+| Campo | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `file` | `File` | Arquivo físico da imagem/PDF do documento. |
+| `tipo_documento_id` | `integer` | ID do tipo de documento esperado (ex: `4` para CNH). |
+
+#### Resposta de Sucesso (`201 Created`)
+
+```json
+{
+  "status": "success",
+  "message": "Documento validado com sucesso!",
+  "dados_extraidos": {
+    "nome": "MARIA OLIVEIRA SOUZA",
+    "cpf": "123.456.789-01",
+    "rg": "12.345.678-9",
+    "data_nascimento": "1990-05-15"
+  }
+}
+```
+
+#### Resposta de Documento Incorreto (`422 Unprocessable Entity`)
+
+```json
+{
+  "status": "fail",
+  "message": "Documento Incorreto.",
+  "motivo_rejeicao": "404"
+}
+```
+
+---
+[⬅️ Voltar ao Índice Principal](file:///Users/edutronicos/Projetos/capturaDocumentos/Documentacao/README.md)

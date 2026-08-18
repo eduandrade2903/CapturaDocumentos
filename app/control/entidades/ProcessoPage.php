@@ -157,7 +157,7 @@ class ProcessoPage extends TPage
                 $collectionRequestNew = CollectionRequest::registra($cliente_id, $processo->id, 'pendente');
 
                 foreach ($param['tipos_documentos'] as $tipo_documento_id) {
-                    $collectionrequestdocumento = new Collectionrequestdocumento();
+                    $collectionrequestdocumento = new CollectionRequestDocumento();
                     $collectionrequestdocumento->collection_request_id = $collectionRequestNew['model']->id;
                     $collectionrequestdocumento->tipo_documento_id = $tipo_documento_id;
                     $collectionrequestdocumento->status = 'pendente';
