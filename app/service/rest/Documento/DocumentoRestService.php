@@ -5,12 +5,12 @@ use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
 /**
- * DocumentosRestService
+ * DocumentoRestService
  * 
- * Serviço REST para Coleta de Documentos (Onboarding).
- * Conforme documentação em Documentacao/Documentos.md.
+ * Serviço REST para Coleta de Documento (Onboarding).
+ * Conforme documentação em Documentacao/Documento.md.
  */
-class DocumentosRestService extends AdiantiRecordService
+class DocumentoRestService extends AdiantiRecordService
 {
     protected ?string $API_KEY = null;
 
@@ -43,17 +43,17 @@ class DocumentosRestService extends AdiantiRecordService
     }
 
     /**
-     * GET /documentos
-     * Retorna a solicitação de coleta e a lista de documentos exigidos.
+     * GET /documento
+     * Retorna a solicitação de coleta e a lista de documento exigidos.
      */
     public function loadAll($param)
     {
         try {
             TTransaction::open('data');
 
-            // 1. Validar empresa via API_KEY
-            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
-            if (empty($empresa->id)) {
+            // 1. Validar cliente via API_KEY
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            if (empty($cliente->id)) {
                 http_response_code(403);
                 throw new Exception('Sem autorizacao.');
             }
@@ -65,10 +65,10 @@ class DocumentosRestService extends AdiantiRecordService
                 throw new Exception('Token único não fornecido.');
             }
 
-            // 3. Buscar CollectionRequest vinculada ao token e à empresa
+            // 3. Buscar CollectionRequest vinculada ao token e à cliente
             $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
-                                                  ->where('empresa_id', '=', $empresa->id)
-                                                  ->first();
+                ->where('cliente_id', '=', $cliente->id)
+                ->first();
             if (!$collectionRequest) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token inválido.');
@@ -82,8 +82,8 @@ class DocumentosRestService extends AdiantiRecordService
 
             $requestId = (int) $collectionRequest->id;
 
-            // 5. Buscar os documentos exigidos para a requisição
-            $reqDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
+            // 5. Buscar os documento exigidos para a requisição
+            $reqDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
 
             $documentosExigidos = [];
             foreach ($reqDocs as $reqDoc) {
@@ -105,13 +105,12 @@ class DocumentosRestService extends AdiantiRecordService
             TTransaction::close();
 
             return [
-                'request_id' => $requestId,
+                'collection_request_id' => $requestId,
                 'token_unico' => $collectionRequest->token_unico,
                 'status_request' => $collectionRequest->status,
                 'data_expiracao' => $collectionRequest->data_expiracao,
                 'documentos_exigidos' => $documentosExigidos
             ];
-
         } catch (Exception $e) {
             TTransaction::rollback();
             throw $e;
@@ -119,7 +118,7 @@ class DocumentosRestService extends AdiantiRecordService
     }
 
     /**
-     * POST /documentos
+     * POST /documento
      * Recebe arquivos do usuário (multipart/form-data ou base64) e grava na base/servidor.
      */
     public function create($param)
@@ -127,9 +126,9 @@ class DocumentosRestService extends AdiantiRecordService
         try {
             TTransaction::open('data');
 
-            // 1. Validar empresa via API_KEY
-            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
-            if (empty($empresa->id)) {
+            // 1. Validar cliente via API_KEY
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            if (empty($cliente->id)) {
                 http_response_code(403);
                 throw new Exception('Sem autorizacao.');
             }
@@ -143,8 +142,8 @@ class DocumentosRestService extends AdiantiRecordService
 
             // 3. Buscar CollectionRequest
             $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
-                                                  ->where('empresa_id', '=', $empresa->id)
-                                                  ->first();
+                ->where('cliente_id', '=', $cliente->id)
+                ->first();
             if (!$collectionRequest) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
@@ -158,8 +157,8 @@ class DocumentosRestService extends AdiantiRecordService
 
             $requestId = (int) $collectionRequest->id;
 
-            // 5. Carregar tipos de documentos permitidos (exigidos) para validação (422)
-            $reqDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
+            // 5. Carregar tipos de documento permitidos (exigidos) para validação (422)
+            $reqDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $validTipoIds = array_map(fn($doc) => (int)$doc->tipo_documento_id, $reqDocs);
 
             // 6. Pasta de destino local para os arquivos
@@ -189,7 +188,7 @@ class DocumentosRestService extends AdiantiRecordService
                 // Validação 422: O tipo de documento enviado deve corresponder aos exigidos
                 if (!in_array($tipoId, $validTipoIds, true)) {
                     http_response_code(422);
-                    throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em CollectionRequestDocumentos.");
+                    throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em Collectionrequestdocumento.");
                 }
 
                 // Salvar o arquivo no disco
@@ -202,13 +201,13 @@ class DocumentosRestService extends AdiantiRecordService
                     throw new Exception("Arquivo inválido para o tipo de documento {$tipoId}.");
                 }
 
-                // Criar ou atualizar registro em Documentos
-                $documento = Documentos::where('request_id', '=', $requestId)
-                                        ->where('tipo_documento_id', '=', $tipoId)
-                                        ->first();
+                // Criar ou atualizar registro em Documento
+                $documento = Documento::where('collection_request_id', '=', $requestId)
+                    ->where('tipo_documento_id', '=', $tipoId)
+                    ->first();
                 if (!$documento) {
-                    $documento = new Documentos();
-                    $documento->request_id = $requestId;
+                    $documento = new Documento();
+                    $documento->collection_request_id = $requestId;
                     $documento->tipo_documento_id = $tipoId;
                 }
 
@@ -219,9 +218,9 @@ class DocumentosRestService extends AdiantiRecordService
                 $documento->store();
 
                 // Atualizar status na tabela collection_request_documentos
-                $reqDoc = CollectionRequestDocumentos::where('request_id', '=', $requestId)
-                                                      ->where('tipo_documento_id', '=', $tipoId)
-                                                      ->first();
+                $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)
+                    ->where('tipo_documento_id', '=', $tipoId)
+                    ->first();
                 if ($reqDoc) {
                     $reqDoc->status = 'enviado';
                     $reqDoc->store();
@@ -245,8 +244,8 @@ class DocumentosRestService extends AdiantiRecordService
                 $extratedData->store();
             }
 
-            // 10. Atualizar status da CollectionRequest se todos os documentos estiverem enviados
-            $allDocs = CollectionRequestDocumentos::where('request_id', '=', $requestId)->load();
+            // 10. Atualizar status da CollectionRequest se todos os documento estiverem enviados
+            $allDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $allUploaded = true;
             foreach ($allDocs as $doc) {
                 if (($doc->status ?? 'pendente') !== 'enviado') {
@@ -264,10 +263,9 @@ class DocumentosRestService extends AdiantiRecordService
             http_response_code(201);
             return [
                 'status' => 'success',
-                'message' => 'Documentos enviados e salvos com sucesso.',
+                'message' => 'Documento enviados e salvos com sucesso.',
                 'data' => $savedDocs
             ];
-
         } catch (Exception $e) {
             TTransaction::rollback();
             throw $e;
@@ -281,9 +279,9 @@ class DocumentosRestService extends AdiantiRecordService
     {
         $filesToProcess = [];
 
-        // A. Processar multipart/form-data via $_FILES['documentos']
-        if (!empty($_FILES['documentos'])) {
-            $uploaded = $_FILES['documentos'];
+        // A. Processar multipart/form-data via $_FILES['documento']
+        if (!empty($_FILES['documento'])) {
+            $uploaded = $_FILES['documento'];
             if (isset($uploaded['name']) && is_array($uploaded['name'])) {
                 foreach ($uploaded['name'] as $tipoId => $name) {
                     if (empty($name)) {
@@ -307,11 +305,11 @@ class DocumentosRestService extends AdiantiRecordService
         // B. Processar chaves diretas em $_FILES (ex: $_FILES['documentos_1'] ou $_FILES['1'])
         if (empty($filesToProcess) && !empty($_FILES)) {
             foreach ($_FILES as $key => $fileInfo) {
-                if ($key === 'documentos') {
+                if ($key === 'documento') {
                     continue;
                 }
                 $tipoId = null;
-                if (preg_match('/^documentos\[?(\d+)\]?$/', $key, $m) || preg_match('/^doc_?(\d+)$/', $key, $m)) {
+                if (preg_match('/^documento\[?(\d+)\]?$/', $key, $m) || preg_match('/^doc_?(\d+)$/', $key, $m)) {
                     $tipoId = (int) $m[1];
                 } elseif (is_numeric($key)) {
                     $tipoId = (int) $key;
@@ -328,9 +326,9 @@ class DocumentosRestService extends AdiantiRecordService
             }
         }
 
-        // C. Processar payload JSON com array de arquivos em Base64 ($param['files'] ou $param['documentos'])
+        // C. Processar payload JSON com array de arquivos em Base64 ($param['files'] ou $param['documento'])
         if (empty($filesToProcess)) {
-            $base64Files = $param['files'] ?? $param['documentos'] ?? null;
+            $base64Files = $param['files'] ?? $param['documento'] ?? null;
             if (is_array($base64Files)) {
                 foreach ($base64Files as $key => $fileItem) {
                     if (is_array($fileItem) && isset($fileItem['tipo_documento_id'], $fileItem['file'])) {
@@ -391,7 +389,7 @@ class DocumentosRestService extends AdiantiRecordService
         if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
             $mimeType = $matches[1];
             $fileData = $matches[2];
-            
+
             $mimeTypes = [
                 'image/jpeg' => 'jpg',
                 'image/jpg' => 'jpg',
@@ -438,17 +436,17 @@ class DocumentosRestService extends AdiantiRecordService
             $tipoDocumentoId = (int) $_POST['tipo_documento_id'];
 
             // Opcional: Validar se é uma imagem ou PDF antes de mandar pra IA
-            
+
             // Aciona nossa Service
             $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($file, $tipoDocumentoId);
 
             if ($resultadoAnalise['CODIGO'] === '200') {
                 // Sucesso: A IA confirmou que é o documento certo
                 // Aqui você pode salvar o arquivo em disco/S3 e gravar no banco
-                
+
                 // Remove o código do array para deixar só os dados extraídos, se preferir
-                unset($resultadoAnalise['CODIGO']); 
-                
+                unset($resultadoAnalise['CODIGO']);
+
                 http_response_code(201);
                 return [
                     'status' => 'success',
@@ -460,11 +458,11 @@ class DocumentosRestService extends AdiantiRecordService
                 //     'message' => 'Documento validado com sucesso!',
                 //     'dados_extraidos' => $resultadoAnalise
                 // ]);
-            } elseif($resultadoAnalise['CODIGO'] === '404') {
+            } elseif ($resultadoAnalise['CODIGO'] === '404') {
                 http_response_code(422);
                 return [
                     'status' => 'fail',
-                    'message'=> 'Documento Incorreto.',
+                    'message' => 'Documento Incorreto.',
                     'motivo_rejeicao' => $resultadoAnalise['CODIGO']
                 ];
             } else {
@@ -474,14 +472,12 @@ class DocumentosRestService extends AdiantiRecordService
                     'motivo_rejeicao' => $resultadoAnalise['ERRO']
                 ];
             }
-
         } catch (Exception $e) {
             http_response_code(500);
             return [
                 'status' => 'error',
-                'message' => 'ERRO NO SERIVDOR: '. $e->getMessage()
+                'message' => 'ERRO NO SERIVDOR: ' . $e->getMessage()
             ];
         }
     }
-
 }

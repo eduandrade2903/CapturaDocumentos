@@ -22,7 +22,7 @@ use Adianti\Wrapper\BootstrapFormBuilder;
 /**
  * StandardFormDataGridCurtainView
  */
-class UsuariosPage extends TPage
+class ProcessoPage extends TPage
 {
     protected $form;      // form
     protected $datagrid;  // datagrid
@@ -41,13 +41,13 @@ class UsuariosPage extends TPage
         parent::__construct();
 
         $this->setDatabase('data'); // define the database
-        $this->setActiveRecord('Usuarios'); // define the Active Record
+        $this->setActiveRecord('Processo'); // define the Active Record
         $this->setDefaultOrder('id', 'asc'); // define the default order
         $this->setLimit(-1); // turn off limit for datagrid
 
         // create the form
-        $this->form = new BootstrapFormBuilder('form_usuarios');
-        $this->form->setFormTitle('Controle de Usuarios');
+        $this->form = new BootstrapFormBuilder('form_processo');
+        $this->form->setFormTitle('Controle de Processo');
 
         // create the form fields
         $id     = new TEntry('id');
@@ -66,7 +66,7 @@ class UsuariosPage extends TPage
         $this->form->addFields([new TLabel('CPF', 'red')], [$cpf]);
         $this->form->addFields([new TLabel('Email', 'red')], [$email]);
         $this->form->addFields([new TLabel('Telefone', 'red')], [$telefone]);
-        $this->form->addFields([new TLabel('Documentos Requeridos', 'red')], [$tipos_documentos]);
+        $this->form->addFields([new TLabel('Documento Requeridos', 'red')], [$tipos_documentos]);
 
         $nome->addValidation('Name', new TRequiredValidator);
         $cpf->addValidation('CPF', new TRequiredValidator);
@@ -138,31 +138,31 @@ class UsuariosPage extends TPage
     public function onSave(array $param)
     {
         try {
-            $empresa_id = $_SESSION['template']['userunitcustomcode'];
+            $cliente_id = $_SESSION['template']['userunitcustomcode'];
 
             $param['cpf'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['cpf'])));
             $param['telefone'] = str_replace(')', '', str_replace('(', '', str_replace('-', '', str_replace(' ', '', $param['telefone']))));
 
             TTransaction::open('data');
-            $usuario = $param['id'] ? new Usuarios($param['id']) : new Usuarios;
-            $usuario->fromArray($param);
-            $usuario->store();
+            $processo = $param['id'] ? new Processo($param['id']) : new Processo;
+            $processo->fromArray($param);
+            $processo->store();
 
 
-            $collectionRequest = CollectionRequest::where('empresa_id', '=', $empresa_id)
-                ->where('usuario_id', '=', $usuario->id)
+            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_id)
+                ->where('processo_id', '=', $processo->id)
                 ->first();
 
             if (!$collectionRequest) {
-                $collectionRequestNew = CollectionRequest::registra($empresa_id, $usuario->id, 'pendente');
+                $collectionRequestNew = CollectionRequest::registra($cliente_id, $processo->id, 'pendente');
 
                 foreach ($param['tipos_documentos'] as $tipo_documento_id) {
-                    $collectionRequestDocumentos = new CollectionRequestDocumentos();
-                    $collectionRequestDocumentos->request_id = $collectionRequestNew['model']->id;
-                    $collectionRequestDocumentos->tipo_documento_id = $tipo_documento_id;
-                    $collectionRequestDocumentos->status = 'pendente';
-                    $collectionRequestDocumentos->data_criacao = date('Y-m-d H:i:s');
-                    $collectionRequestDocumentos->store();
+                    $collectionrequestdocumento = new Collectionrequestdocumento();
+                    $collectionrequestdocumento->collection_request_id = $collectionRequestNew['model']->id;
+                    $collectionrequestdocumento->tipo_documento_id = $tipo_documento_id;
+                    $collectionrequestdocumento->status = 'pendente';
+                    $collectionrequestdocumento->data_criacao = date('Y-m-d H:i:s');
+                    $collectionrequestdocumento->store();
                 }
             }
 
@@ -179,19 +179,19 @@ class UsuariosPage extends TPage
 
         try {
             TTransaction::open('data');
-            $empresa_logada = $_SESSION['template']['userunitcustomcode'];
-            $collectionsRequest = CollectionRequest::where('empresa_id', '=', $empresa_logada)->load();
+            $cliente_logada = $_SESSION['template']['userunitcustomcode'];
+            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_logada)->load();
 
-            $usuarios_ids = [];
-            if (!empty($collectionsRequest)) {
-                foreach ($collectionsRequest as $collection) {
-                    $usuarios_ids[] = $collection->usuario_id;
+            $processo_ids = [];
+            if (!empty($collectionRequest)) {
+                foreach ($collectionRequest as $collection) {
+                    $processo_ids[] = $collection->processo_id;
                 }
             }
-            $usuarios = $usuarios_ids ?  Usuarios::where('id', 'in', $usuarios_ids)->load() : [];
+            $processo = $processo_ids ?  Processo::where('id', 'in', $processo_ids)->load() : [];
 
             $this->datagrid->clear();
-            $this->datagrid->addItems($usuarios);
+            $this->datagrid->addItems($processo);
 
             TTransaction::close();
         } catch (Exception $e) {

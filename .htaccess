@@ -188,18 +188,19 @@ RewriteRule ^user-groups$ rest.php?class=SystemUserGroupRestService&method=handl
 RewriteRule ^cliente$ rest.php?class=ClienteRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^cliente/([A-Za-z0-9]*)$ rest.php?class=ClienteRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
+
 RewriteRule ^webhook-event$ rest.php?class=WebhookEventRestService&method=handle&%{QUERY_STRING} [NC]
 
 RewriteRule ^processo$ rest.php?class=ProcessoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^processo/([A-Za-z0-9]*)$ rest.php?class=ProcessoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^collection$ rest.php?class=CollectionRequestsRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^collection/([0-9]+)$ rest.php?class=CollectionRequestsRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
-RewriteRule ^collection/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestsRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collection$ rest.php?class=CollectionRequestRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collection/([0-9]+)$ rest.php?class=CollectionRequestRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collection/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
 
 RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentoRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collectionDocumento$ rest.php?class=CollectionrequestdocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 
 RewriteRule ^documento$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^documento/([A-Za-z0-9]*)$ rest.php?class=DocumentoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]

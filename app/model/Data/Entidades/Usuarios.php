@@ -2,14 +2,16 @@
 
 use Adianti\Database\TRecord;
 
-class Usuarios extends TRecord {
+class Processo extends TRecord
+{
 
-    CONST TABLENAME = 'usuarios';
-    CONST PRIMARYKEY = 'id';
-    CONST IDPOLICY = 'max';
+    const TABLENAME = 'processo';
+    const PRIMARYKEY = 'id';
+    const IDPOLICY = 'max';
 
 
-    public function __construct($id = null, $ObjectLoad = true) {
+    public function __construct($id = null, $ObjectLoad = true)
+    {
         parent::__construct($id, $ObjectLoad);
         parent::addAttribute('nome_completo');
         parent::addAttribute('cpf');
@@ -19,37 +21,36 @@ class Usuarios extends TRecord {
 
     public function get_collection()
     {
-        $collection = CollectionRequest::where('usuario_id', '=', $this->id)->first();
+        $collection = CollectionRequest::where('processo_id', '=', $this->id)->first();
         return $collection;
     }
 
     public function verifica()
     {
-        if (empty($this->nome_completo) || empty($this->cpf )) {
+        if (empty($this->nome_completo) || empty($this->cpf)) {
             return false;
         }
-        if(Usuarios::where('cpf', '=', $this->cpf)->first()) {
+        if (Processo::where('cpf', '=', $this->cpf)->first()) {
             throw new Exception("CPF já cadastrado no sistema.");
         }
         return true;
-   }
+    }
 
-   public static function isUsuarioExistente($id) 
-   {
-        $existe = Usuarios::where('id', '=', $id)->first();
-        if(!$existe) {
+    public static function isProcessoExistente($id)
+    {
+        $existe = Processo::where('id', '=', $id)->first();
+        if (!$existe) {
             return throw new Exception("Usuário com ID $id não encontrado.");
-        }
-        else {
+        } else {
             return $existe;
         }
-   }
+    }
 
-   public function store() 
-   { 
+    public function store()
+    {
         if (!$this->verifica()) {
             throw new Exception("Campos obrigatórios não preenchidos.");
         }
         parent::store();
-   }
+    }
 }

@@ -4,9 +4,9 @@ use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
-class CollectionRequestDocumentosRestService extends AdiantiRecordService
+class CollectionRequestDocumentoRestService extends AdiantiRecordService
 {
-    
+
 
     protected string $API_KEY;
 
@@ -23,19 +23,19 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
         switch ($method) {
             case 'GET':
                 if (!empty($param['id'])) {
-                    return $this->getCollectionRequestDocumentosById($param);
+                    return $this->getCollectionrequestdocumentoById($param);
                 } else {
-                    return $this->getCollectionRequestDocumentos($param);
+                    return $this->getCollectionrequestdocumento($param);
                 }
                 break;
             case 'POST':
-                return $this->createCollectionRequestDocumentos($param);
+                return $this->createCollectionrequestdocumento($param);
                 break;
             // case 'PUT':
-            //     return $this->updateCollectionRequestDocumentos($param);
+            //     return $this->updateCollectionrequestdocumento($param);
             //     break;
             // case 'DELETE':
-            //     return $this->deleteCollectionRequestDocumentos($param);
+            //     return $this->deleteCollectionrequestdocumento($param);
             //     break;
             default:
                 throw new Exception("Método HTTP não suportado.");
@@ -43,7 +43,7 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
     }
 
 
-    public static function getCollectionRequestDocumentos($param)
+    public static function getCollectionrequestdocumento($param)
     {
         try {
             $collectionRequestId = $param['tipos_documentos'] ?? null;
@@ -52,15 +52,15 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
                 throw new Exception("ID da solicitação de coleta não fornecido.");
             }
 
-            $collectionRequestDocumentos = CollectionRequestDocumentos::where('collection_request_id', '=', $collectionRequestId)->load();
+            $collectionrequestdocumento = Collectionrequestdocumento::where('collection_request_id', '=', $collectionRequestId)->load();
 
-            return $collectionRequestDocumentos;
+            return $collectionrequestdocumento;
         } catch (Exception $e) {
-            throw new Exception("Erro ao buscar documentos da solicitação de coleta: " . $e->getMessage());
+            throw new Exception("Erro ao buscar documento da solicitação de coleta: " . $e->getMessage());
         }
     }
 
-    public static function getCollectionRequestDocumentosById($param)
+    public static function getCollectionrequestdocumentoById($param)
     {
         try {
             TTransaction::open('data');
@@ -75,16 +75,16 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
                 throw new Exception("Solicitação não encontrada.");
             }
 
-            // 1. Busca todos os documentos da requisição em 1 query
-            $documentos = CollectionRequestDocumentos::where('collection_request_id', '=', $request->id)->load();
+            // 1. Busca todos os documento da requisição em 1 query
+            $documento = Collectionrequestdocumento::where('collection_request_id', '=', $request->id)->load();
 
-            if (empty($documentos)) {
+            if (empty($documento)) {
                 TTransaction::close();
                 return ['status' => 'success', 'data' => []];
             }
 
             // 2. Extrai todos os IDs de tipos e busca TODOS em uma única query SQL (evita o loop N+1)
-            $tiposIds = array_unique(array_map(fn($d) => $d->tipo_documento_id, $documentos));
+            $tiposIds = array_unique(array_map(fn($d) => $d->tipo_documento_id, $documento));
             $tiposObjetos = TiposDocumentos::where('id', 'in', $tiposIds)->load();
 
             // Mapeia os tipos por ID para busca instantânea
@@ -100,10 +100,10 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
 
             // 3. Monta o resultado final sem consultas extras ao banco
             $documentosFormatados = [];
-            foreach ($documentos as $doc) {
+            foreach ($documento as $doc) {
                 $documentosFormatados[] = [
                     'id' => $doc->id,
-                    'request_id' => $doc->collection_request_id,
+                    'collection_request_id' => $doc->collection_request_id,
                     'tipo_documento_id' => $doc->tipo_documento_id,
                     'status' => $doc->status,
                     'data_criacao' => $doc->data_criacao,
@@ -120,12 +120,12 @@ class CollectionRequestDocumentosRestService extends AdiantiRecordService
         }
     }
 
-    public static function createCollectionRequestDocumentos($param)
+    public static function createCollectionrequestdocumento($param)
     {
         try {
             TTransaction::open('data');
 
-            $collectionRequestDocumento = new CollectionRequestDocumentos();
+            $collectionRequestDocumento = new Collectionrequestdocumento();
 
             $collectionRequestDocumento->fromArray($param['data'] ?? []);
             $collectionRequestDocumento->data_criacao = date('Y-m-d H:i:s');

@@ -1,4 +1,5 @@
 <?php
+
 use Adianti\Core\AdiantiCoreTranslator;
 
 /**
@@ -16,7 +17,7 @@ class AdiantiTemplateTranslator
     private $lang;            // target language
     private $messages;
     private $sourceMessages;
-    
+
     /**
      * Class Constructor
      */
@@ -29,217 +30,217 @@ class AdiantiTemplateTranslator
         $this->messages['it'] = [];
         $this->messages['de'] = [];
         $this->messages['fr'] = [];
-        
+
         $this->messages['en'][] = 'File not found';
         $this->messages['pt'][] = 'Arquivo não encontrado';
         $this->messages['es'][] = 'Archivo no encontrado';
         $this->messages['it'][] = 'File non trovato';
         $this->messages['de'][] = 'Datei nicht gefunden';
         $this->messages['fr'][] = 'Fichier non trouvé';
-        
+
         $this->messages['en'][] = 'Search';
         $this->messages['pt'][] = 'Buscar';
         $this->messages['es'][] = 'Buscar';
         $this->messages['it'][] = 'Cerca';
         $this->messages['de'][] = 'Suchen';
         $this->messages['fr'][] = 'Rechercher';
-        
+
         $this->messages['en'][] = 'Register';
         $this->messages['pt'][] = 'Cadastrar';
         $this->messages['es'][] = 'Registrar';
         $this->messages['it'][] = 'Registrati';
         $this->messages['de'][] = 'Registrieren';
         $this->messages['fr'][] = 'S’inscrire';
-        
+
         $this->messages['en'][] = 'Record saved';
         $this->messages['pt'][] = 'Registro salvo';
         $this->messages['es'][] = 'Registro guardado';
         $this->messages['it'][] = 'Record salvato';
         $this->messages['de'][] = 'Datensatz gespeichert';
         $this->messages['fr'][] = 'Enregistrement sauvegardé';
-        
+
         $this->messages['en'][] = 'Do you really want to delete ?';
         $this->messages['pt'][] = 'Deseja realmente excluir ?';
         $this->messages['es'][] = 'Deseas realmente eliminar ?';
         $this->messages['it'][] = 'Vuoi davvero eliminare?';
         $this->messages['de'][] = 'Möchten Sie wirklich löschen?';
         $this->messages['fr'][] = 'Voulez-vous vraiment supprimer ?';
-        
+
         $this->messages['en'][] = 'Record deleted';
         $this->messages['pt'][] = 'Registro excluído';
         $this->messages['es'][] = 'Registro eliminado';
         $this->messages['it'][] = 'Record eliminato';
         $this->messages['de'][] = 'Datensatz gelöscht';
         $this->messages['fr'][] = 'Enregistrement supprimé';
-        
+
         $this->messages['en'][] = 'Function';
         $this->messages['pt'][] = 'Função';
         $this->messages['es'][] = 'Función';
         $this->messages['it'][] = 'Funzione';
         $this->messages['de'][] = 'Funktion';
         $this->messages['fr'][] = 'Fonction';
-        
+
         $this->messages['en'][] = 'Table';
         $this->messages['pt'][] = 'Tabela';
         $this->messages['es'][] = 'Tabla';
         $this->messages['it'][] = 'Tabella';
         $this->messages['de'][] = 'Tabelle';
         $this->messages['fr'][] = 'Table';
-        
+
         $this->messages['en'][] = 'Tool';
         $this->messages['pt'][] = 'Ferramenta';
         $this->messages['es'][] = 'Herramienta';
         $this->messages['it'][] = 'Strumento';
         $this->messages['de'][] = 'Werkzeug';
         $this->messages['fr'][] = 'Outil';
-        
+
         $this->messages['en'][] = 'Data';
         $this->messages['pt'][] = 'Dados';
         $this->messages['es'][] = 'Datos';
         $this->messages['it'][] = 'Dati';
         $this->messages['de'][] = 'Daten';
         $this->messages['fr'][] = 'Données';
-        
+
         $this->messages['en'][] = 'Open';
         $this->messages['pt'][] = 'Abrir';
         $this->messages['es'][] = 'Abrir';
         $this->messages['it'][] = 'Apri';
         $this->messages['de'][] = 'Öffnen';
         $this->messages['fr'][] = 'Ouvrir';
-        
+
         $this->messages['en'][] = 'New';
         $this->messages['pt'][] = 'Novo';
         $this->messages['es'][] = 'Nuevo';
         $this->messages['it'][] = 'Nuovo';
         $this->messages['de'][] = 'Neu';
         $this->messages['fr'][] = 'Nouveau';
-        
+
         $this->messages['en'][] = 'Save';
         $this->messages['pt'][] = 'Salvar';
         $this->messages['es'][] = 'Guardar';
         $this->messages['it'][] = 'Salva';
         $this->messages['de'][] = 'Speichern';
         $this->messages['fr'][] = 'Sauvegarder';
-        
+
         $this->messages['en'][] = 'Find';
         $this->messages['pt'][] = 'Buscar';
         $this->messages['es'][] = 'Buscar';
         $this->messages['it'][] = 'Trova';
         $this->messages['de'][] = 'Finden';
         $this->messages['fr'][] = 'Trouver';
-        
+
         $this->messages['en'][] = 'Edit';
         $this->messages['pt'][] = 'Editar';
         $this->messages['es'][] = 'Modificar';
         $this->messages['it'][] = 'Modifica';
         $this->messages['de'][] = 'Bearbeiten';
         $this->messages['fr'][] = 'Modifier';
-        
+
         $this->messages['en'][] = 'Delete';
         $this->messages['pt'][] = 'Excluir';
         $this->messages['es'][] = 'Eliminar';
         $this->messages['it'][] = 'Elimina';
         $this->messages['de'][] = 'Löschen';
         $this->messages['fr'][] = 'Supprimer';
-        
+
         $this->messages['en'][] = 'Cancel';
         $this->messages['pt'][] = 'Cancelar';
         $this->messages['es'][] = 'Cancelar';
         $this->messages['it'][] = 'Annulla';
         $this->messages['de'][] = 'Abbrechen';
         $this->messages['fr'][] = 'Annuler';
-        
+
         $this->messages['en'][] = 'Yes';
         $this->messages['pt'][] = 'Sim';
         $this->messages['es'][] = 'Sí';
         $this->messages['it'][] = 'Sì';
         $this->messages['de'][] = 'Ja';
         $this->messages['fr'][] = 'Oui';
-        
+
         $this->messages['en'][] = 'No';
         $this->messages['pt'][] = 'Não';
         $this->messages['es'][] = 'No';
         $this->messages['it'][] = 'No';
         $this->messages['de'][] = 'Nein';
         $this->messages['fr'][] = 'Non';
-        
+
         $this->messages['en'][] = 'January';
         $this->messages['pt'][] = 'Janeiro';
         $this->messages['es'][] = 'Enero';
         $this->messages['it'][] = 'Gennaio';
         $this->messages['de'][] = 'Januar';
         $this->messages['fr'][] = 'Janvier';
-        
+
         $this->messages['en'][] = 'February';
         $this->messages['pt'][] = 'Fevereiro';
         $this->messages['es'][] = 'Febrero';
         $this->messages['it'][] = 'Febbraio';
         $this->messages['de'][] = 'Februar';
         $this->messages['fr'][] = 'Février';
-        
+
         $this->messages['en'][] = 'March';
         $this->messages['pt'][] = 'Março';
         $this->messages['es'][] = 'Marzo';
         $this->messages['it'][] = 'Marzo';
         $this->messages['de'][] = 'März';
         $this->messages['fr'][] = 'Mars';
-        
+
         $this->messages['en'][] = 'April';
         $this->messages['pt'][] = 'Abril';
         $this->messages['es'][] = 'Abril';
         $this->messages['it'][] = 'Aprile';
         $this->messages['de'][] = 'April';
         $this->messages['fr'][] = 'Avril';
-        
+
         $this->messages['en'][] = 'May';
         $this->messages['pt'][] = 'Maio';
         $this->messages['es'][] = 'Mayo';
         $this->messages['it'][] = 'Maggio';
         $this->messages['de'][] = 'Mai';
         $this->messages['fr'][] = 'Mai';
-        
+
         $this->messages['en'][] = 'June';
         $this->messages['pt'][] = 'Junho';
         $this->messages['es'][] = 'Junio';
         $this->messages['it'][] = 'Giugno';
         $this->messages['de'][] = 'Juni';
         $this->messages['fr'][] = 'Juin';
-        
+
         $this->messages['en'][] = 'July';
         $this->messages['pt'][] = 'Julho';
         $this->messages['es'][] = 'Julio';
         $this->messages['it'][] = 'Luglio';
         $this->messages['de'][] = 'Juli';
         $this->messages['fr'][] = 'Juillet';
-        
+
         $this->messages['en'][] = 'August';
         $this->messages['pt'][] = 'Agosto';
         $this->messages['es'][] = 'Agosto';
         $this->messages['it'][] = 'Agosto';
         $this->messages['de'][] = 'August';
         $this->messages['fr'][] = 'Août';
-        
+
         $this->messages['en'][] = 'September';
         $this->messages['pt'][] = 'Setembro';
         $this->messages['es'][] = 'Septiembre';
         $this->messages['it'][] = 'Settembre';
         $this->messages['de'][] = 'September';
         $this->messages['fr'][] = 'Septembre';
-        
+
         $this->messages['en'][] = 'October';
         $this->messages['pt'][] = 'Outubro';
         $this->messages['es'][] = 'Octubre';
         $this->messages['it'][] = 'Ottobre';
         $this->messages['de'][] = 'Oktober';
         $this->messages['fr'][] = 'Octobre';
-        
+
         $this->messages['en'][] = 'November';
         $this->messages['pt'][] = 'Novembro';
         $this->messages['es'][] = 'Noviembre';
         $this->messages['it'][] = 'Novembre';
         $this->messages['de'][] = 'November';
         $this->messages['fr'][] = 'Novembre';
-        
+
 
         $this->messages['en'][] = 'December';
         $this->messages['pt'][] = 'Dezembro';
@@ -247,99 +248,99 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = 'Dicembre';
         $this->messages['de'][] = 'Dezember';
         $this->messages['fr'][] = 'Décembre';
-        
+
         $this->messages['en'][] = 'Today';
         $this->messages['pt'][] = 'Hoje';
         $this->messages['es'][] = 'Hoy';
         $this->messages['it'][] = 'Oggi';
         $this->messages['de'][] = 'Heute';
         $this->messages['fr'][] = 'Aujourd’hui';
-        
+
         $this->messages['en'][] = 'Close';
         $this->messages['pt'][] = 'Fechar';
         $this->messages['es'][] = 'Cerrar';
         $this->messages['it'][] = 'Chiudi';
         $this->messages['de'][] = 'Schließen';
         $this->messages['fr'][] = 'Fermer';
-        
+
         $this->messages['en'][] = 'The field ^1 can not be less than ^2 characters';
         $this->messages['pt'][] = 'O campo ^1 não pode ter menos de ^2 caracteres';
         $this->messages['es'][] = 'El campo ^1 no puede tener menos de ^2 caracteres';
         $this->messages['it'][] = 'Il campo ^1 non può contenere meno di ^2 caratteri';
         $this->messages['de'][] = 'Das Feld ^1 darf nicht weniger als ^2 Zeichen enthalten';
         $this->messages['fr'][] = 'Le champ ^1 ne peut pas contenir moins de ^2 caractères';
-        
+
         $this->messages['en'][] = 'The field ^1 can not be greater than ^2 characters';
         $this->messages['pt'][] = 'O campo ^1 não pode ter mais de ^2 caracteres';
         $this->messages['es'][] = 'El campo ^1 no puede tener mas de ^2 caracteres';
         $this->messages['it'][] = 'Il campo ^1 non può contenere più di ^2 caratteri';
         $this->messages['de'][] = 'Das Feld ^1 darf nicht mehr als ^2 Zeichen enthalten';
         $this->messages['fr'][] = 'Le champ ^1 ne peut pas contenir plus de ^2 caractères';
-        
+
         $this->messages['en'][] = 'The field ^1 can not be less than ^2';
         $this->messages['pt'][] = 'O campo ^1 não pode ser menor que ^2';
         $this->messages['es'][] = 'El campo ^1 no puede ser menor que ^2';
         $this->messages['it'][] = 'Il campo ^1 non può essere inferiore a ^2';
         $this->messages['de'][] = 'Das Feld ^1 darf nicht kleiner als ^2 sein';
         $this->messages['fr'][] = 'Le champ ^1 ne peut pas être inférieur à ^2';
-        
+
         $this->messages['en'][] = 'The field ^1 can not be greater than ^2';
         $this->messages['pt'][] = 'O campo ^1 não pode ser maior que ^2';
         $this->messages['es'][] = 'El campo ^1 no puede ser mayor que ^2';
         $this->messages['it'][] = 'Il campo ^1 non può essere superiore a ^2';
         $this->messages['de'][] = 'Das Feld ^1 darf nicht größer als ^2 sein';
         $this->messages['fr'][] = 'Le champ ^1 ne peut pas être supérieur à ^2';
-        
+
         $this->messages['en'][] = 'The field ^1 is required';
         $this->messages['pt'][] = 'O campo ^1 é obrigatório';
         $this->messages['es'][] = 'El campo ^1 es obligatorio';
         $this->messages['it'][] = 'Il campo ^1 è obbligatorio';
         $this->messages['de'][] = 'Das Feld ^1 ist erforderlich';
         $this->messages['fr'][] = 'Le champ ^1 est obligatoire';
-        
+
         $this->messages['en'][] = 'The field ^1 has not a valid CNPJ';
         $this->messages['pt'][] = 'O campo ^1 não contém um CNPJ válido';
         $this->messages['es'][] = 'El campo ^1 no contiene un CNPJ válido';
         $this->messages['it'][] = 'Il campo ^1 non contiene un CNPJ valido';
         $this->messages['de'][] = 'Das Feld ^1 enthält keine gültige CNPJ';
         $this->messages['fr'][] = 'Le champ ^1 ne contient pas un CNPJ valide';
-        
+
         $this->messages['en'][] = 'The field ^1 has not a valid CPF';
         $this->messages['pt'][] = 'O campo ^1 não contém um CPF válido';
         $this->messages['es'][] = 'El campo ^1 no contiene un CPF válido';
         $this->messages['it'][] = 'Il campo ^1 non contiene un CPF valido';
         $this->messages['de'][] = 'Das Feld ^1 enthält keine gültige CPF';
         $this->messages['fr'][] = 'Le champ ^1 ne contient pas un CPF valide';
-        
+
         $this->messages['en'][] = 'The field ^1 contains an invalid e-mail';
         $this->messages['pt'][] = 'O campo ^1 contém um e-mail inválido';
         $this->messages['es'][] = 'El campo ^1 contiene um e-mail inválido';
         $this->messages['it'][] = 'Il campo ^1 contiene un’e-mail non valida';
         $this->messages['de'][] = 'Das Feld ^1 enthält eine ungültige E-Mail';
         $this->messages['fr'][] = 'Le champ ^1 contient un e-mail invalide';
-        
+
         $this->messages['en'][] = 'Permission denied';
         $this->messages['pt'][] = 'Permissão negada';
         $this->messages['es'][] = 'Permiso denegado';
         $this->messages['it'][] = 'Permesso negato';
         $this->messages['de'][] = 'Zugriff verweigert';
         $this->messages['fr'][] = 'Permission refusée';
-        
+
         $this->messages['en'][] = 'Generate';
         $this->messages['pt'][] = 'Gerar';
         $this->messages['es'][] = 'Generar';
         $this->messages['it'][] = 'Genera';
         $this->messages['de'][] = 'Generieren';
         $this->messages['fr'][] = 'Générer';
-        
+
         $this->messages['en'][] = 'List';
         $this->messages['pt'][] = 'Listar';
         $this->messages['es'][] = 'Listar';
         $this->messages['it'][] = 'Elenco';
         $this->messages['de'][] = 'Liste';
         $this->messages['fr'][] = 'Liste';
-        
-        
+
+
 
         $this->messages['en'][] = 'Wrong password';
         $this->messages['pt'][] = 'Senha errada';
@@ -460,7 +461,7 @@ class AdiantiTemplateTranslator
         $this->messages['de'][] = 'Startseite';
         $this->messages['fr'][] = 'Page d’accueil';
 
-                
+
         $this->messages['en'][] = 'Page name';
         $this->messages['pt'][] = 'Nome da Tela';
         $this->messages['es'][] = 'Nombre da la Pantalla';
@@ -1493,7 +1494,7 @@ class AdiantiTemplateTranslator
 
         $this->messages['en'][] = 'Users by group';
         $this->messages['pt'][] = 'Usuários por grupo';
-        $this->messages['es'][] = 'Usuarios por grupo';
+        $this->messages['es'][] = 'Usuario por grupo';
         $this->messages['it'][] = 'Utenti per gruppo';
         $this->messages['fr'][] = 'Utilisateurs par groupe';
         $this->messages['de'][] = 'Benutzer nach Gruppe';
@@ -1507,7 +1508,7 @@ class AdiantiTemplateTranslator
 
         $this->messages['en'][] = 'Users by unit';
         $this->messages['pt'][] = 'Usuários por unidade';
-        $this->messages['es'][] = 'Usuarios por unidad';
+        $this->messages['es'][] = 'Usuario por unidad';
         $this->messages['it'][] = 'Utenti per unità';
         $this->messages['fr'][] = 'Utilisateurs par unité';
         $this->messages['de'][] = 'Benutzer nach Einheit';
@@ -3146,7 +3147,7 @@ class AdiantiTemplateTranslator
         $this->messages['fr'][] = 'Colonne de départ';
         $this->messages['de'][] = 'Startspalte';
 
-                
+
         $this->messages['en'][] = 'End column';
         $this->messages['pt'][] = 'Coluna de fim';
         $this->messages['es'][] = 'Columna final';
@@ -3280,7 +3281,7 @@ class AdiantiTemplateTranslator
         $this->messages['fr'][] = 'Aucun doublon trouvé';
         $this->messages['de'][] = 'Keine Duplikate gefunden';
 
-                
+
         $this->messages['en'][] = 'Last backups from applied patches';
         $this->messages['pt'][] = 'Últimos backups de patches aplicados';
         $this->messages['es'][] = 'Últimas copias de seguridad a partir de parches aplicados';
@@ -3442,7 +3443,7 @@ class AdiantiTemplateTranslator
         $this->messages['fr'][] = 'Très petit';
         $this->messages['de'][] = 'Sehr klein';
 
-                
+
         $this->messages['en'][] = 'Very large';
         $this->messages['pt'][] = 'Muito grande';
         $this->messages['es'][] = 'Muy grande';
@@ -3562,7 +3563,7 @@ class AdiantiTemplateTranslator
         $this->messages['fr'][] = 'Champ de contenu';
         $this->messages['de'][] = 'Inhaltsfeld';
 
-                
+
         $this->messages['en'][] = 'Created at field';
         $this->messages['pt'][] = 'Campo criado em';
         $this->messages['es'][] = 'Campo creado en';
@@ -3716,14 +3717,14 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = 'Comprimi';
         $this->messages['fr'][] = 'Réduire';
         $this->messages['de'][] = 'Einklappen';
-        
+
         $this->messages['en'][] = 'Copy';
         $this->messages['pt'][] = 'Copiar';
         $this->messages['es'][] = 'Copiar';
         $this->messages['it'][] = 'Copia';
         $this->messages['fr'][] = 'Copier';
         $this->messages['de'][] = 'Kopieren';
-        
+
         $this->messages['en'][] = 'Model (group)';
         $this->messages['pt'][] = 'Modelo (grupo)';
         $this->messages['es'][] = 'Modelo (grupo)';
@@ -3744,21 +3745,21 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = 'Ordine (gruppo)';
         $this->messages['fr'][] = 'Ordre (groupe)';
         $this->messages['de'][] = 'Reihenfolge (Gruppe)';
-        
+
         $this->messages['en'][] = 'Apply filters to generate the report';
         $this->messages['pt'][] = 'Aplique filtros para gerar o relatório';
         $this->messages['es'][] = 'Aplicar filtros para generar el informe';
         $this->messages['it'][] = 'Applica i filtri per generare il rapporto';
         $this->messages['fr'][] = 'Appliquez des filtres pour générer le rapport';
         $this->messages['de'][] = 'Filter anwenden, um den Bericht zu erstellen';
-        
+
         $this->messages['en'][] = 'Hide';
         $this->messages['pt'][] = 'Esconder';
         $this->messages['es'][] = 'Ocultar';
         $this->messages['it'][] = 'Nascondi';
         $this->messages['fr'][] = 'Cacher';
         $this->messages['de'][] = 'Verbergen';
-        
+
         $this->messages['en'][] = 'Other instructions';
         $this->messages['pt'][] = 'Outras instruções';
         $this->messages['es'][] = 'Otras instrucciones';
@@ -3786,7 +3787,7 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = 'Il token non è valido o è scaduto. Effettua nuovamente l\'accesso';
         $this->messages['fr'][] = 'Le jeton est invalide ou expiré. Veuillez vous reconnecter';
         $this->messages['de'][] = 'Das Token ist ungültig oder abgelaufen. Bitte melden Sie sich erneut an';
-        
+
         $this->messages['en'][] = 'Access with admin not allowed';
         $this->messages['pt'][] = 'Acesso com administrador não permitido';
         $this->messages['es'][] = 'Acceso con administrador no permitido';
@@ -3800,7 +3801,7 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = 'Seed dell\'applicazione non definito';
         $this->messages['fr'][] = 'Graine de l\'application non définie';
         $this->messages['de'][] = 'Anwendungs-Seed nicht definiert';
-        
+
         $this->messages['en'][] = 'Start date';
         $this->messages['pt'][] = 'Data inicial';
         $this->messages['es'][] = 'Fecha de inicio';
@@ -3842,31 +3843,31 @@ class AdiantiTemplateTranslator
         $this->messages['it'][] = "Una volta all'ora";
         $this->messages['fr'][] = 'Une fois par heure';
         $this->messages['de'][] = 'Einmal pro Stunde';
-        
+
         $this->messages['en'][] = 'Permission to use this program will be automatically granted to all user groups selected here';
         $this->messages['pt'][] = 'A permissão de uso deste programa será concedida automaticamente à todos grupos de usuários selecionados aqui';
-        $this->messages['es'][] = 'El permiso para usar este programa se concederá automáticamente a todos los grupos de usuarios seleccionados aquí';
+        $this->messages['es'][] = 'El permiso para usar este programa se concederá automáticamente a todos los grupos de usuario seleccionados aquí';
         $this->messages['it'][] = 'L\'autorizzazione all\'uso di questo programma verrà concessa automaticamente a tutti i gruppi di utenti selezionati qui';
         $this->messages['fr'][] = 'L\'autorisation d\'utiliser ce programme sera automatiquement accordée à tous les groupes d\'utilisateurs sélectionnés ici';
         $this->messages['de'][] = 'Die Berechtigung zur Nutzung dieses Programms wird automatisch allen hier ausgewählten Benutzergruppen erteilt';
 
         $this->messages['en'][] = 'When defining a restricted method, only users with the selected role will be able to execute that method';
         $this->messages['pt'][] = 'Ao definir um método restrito, apenas usuários com o papel selecionado poderão executar aquele método';
-        $this->messages['es'][] = 'Al definir un método restringido, solo los usuarios con el rol seleccionado podrán ejecutar dicho método';
+        $this->messages['es'][] = 'Al definir un método restringido, solo los usuario con el rol seleccionado podrán ejecutar dicho método';
         $this->messages['it'][] = 'Quando si definisce un metodo con restrizioni, solo gli utenti con il ruolo selezionato potranno eseguire quel metodo';
         $this->messages['fr'][] = 'Lors de la définition d\'une méthode restreinte, seuls les utilisateurs ayant le rôle sélectionné pourront exécuter cette méthode';
         $this->messages['de'][] = 'Beim Definieren einer eingeschränkten Methode können nur Benutzer mit der ausgewählten Rolle diese Methode ausführen';
 
         $this->messages['en'][] = 'The programs selected here will automatically have access permission granted to this user group';
         $this->messages['pt'][] = 'Os programas selecionados aqui terão a permissão de acesso concedida automaticamente à este grupo de usuários';
-        $this->messages['es'][] = 'Los programas seleccionados aquí tendrán el permiso de acceso concedido automáticamente a este grupo de usuarios';
+        $this->messages['es'][] = 'Los programas seleccionados aquí tendrán el permiso de acceso concedido automáticamente a este grupo de usuario';
         $this->messages['it'][] = 'I programmi selezionati qui avranno automaticamente il permesso di accesso concesso a questo gruppo di utenti';
         $this->messages['fr'][] = 'Les programmes sélectionnés ici auront automatiquement l\'autorisation d\'accès accordée à ce groupe d\'utilisateurs';
         $this->messages['de'][] = 'Den hier ausgewählten Programmen wird automatisch die Zugriffsberechtigung für diese Benutzergruppe erteilt';
 
         $this->messages['en'][] = 'Select all users who will be part of this group';
         $this->messages['pt'][] = 'Selecione todos os usuários que farão parte deste grupo';
-        $this->messages['es'][] = 'Seleccione todos los usuarios que formarán parte de este grupo';
+        $this->messages['es'][] = 'Seleccione todos los usuario que formarán parte de este grupo';
         $this->messages['it'][] = 'Seleziona tutti gli utenti che faranno parte di questo gruppo';
         $this->messages['fr'][] = 'Sélectionnez tous les utilisateurs qui feront partie de ce groupe';
         $this->messages['de'][] = 'Wählen Sie alle Benutzer aus, die Teil dieser Gruppe sein werden';
@@ -3878,12 +3879,11 @@ class AdiantiTemplateTranslator
         $this->messages['fr'][] = 'Désactiver l\'authentification à deux facteurs';
         $this->messages['de'][] = 'Zwei-Faktor-Authentifizierung deaktivieren';
 
-        foreach ($this->messages as $lang => $messages)
-        {
-            $this->sourceMessages[$lang] = array_flip( $this->messages[ $lang ] );
+        foreach ($this->messages as $lang => $messages) {
+            $this->sourceMessages[$lang] = array_flip($this->messages[$lang]);
         }
     }
-    
+
     /**
      * Returns the singleton instance
      * @return  Instance of self
@@ -3891,15 +3891,14 @@ class AdiantiTemplateTranslator
     public static function getInstance()
     {
         // if there's no instance
-        if (empty(self::$instance))
-        {
+        if (empty(self::$instance)) {
             // creates a new object
             self::$instance = new self;
         }
         // returns the created instance
         return self::$instance;
     }
-    
+
     /**
      * Define the target language
      * @param $lang Target language index
@@ -3907,13 +3906,12 @@ class AdiantiTemplateTranslator
     public static function setLanguage($lang)
     {
         $instance = self::getInstance();
-        
-        if (in_array($lang, array_keys($instance->messages)))
-        {
+
+        if (in_array($lang, array_keys($instance->messages))) {
             $instance->lang = $lang;
         }
     }
-    
+
     /**
      * Returns the target language
      * @return Target language index
@@ -3923,7 +3921,7 @@ class AdiantiTemplateTranslator
         $instance = self::getInstance();
         return $instance->lang;
     }
-    
+
     /**
      * Translate a word to the target language
      * @param $word     Word to be translated
@@ -3934,59 +3932,48 @@ class AdiantiTemplateTranslator
         // get the self unique instance
         $instance = self::getInstance();
         // search by the numeric index of the word
-        
-        if (isset($instance->sourceMessages[$source_language][$word]) and !is_null($instance->sourceMessages[$source_language][$word]))
-        {
+
+        if (isset($instance->sourceMessages[$source_language][$word]) and !is_null($instance->sourceMessages[$source_language][$word])) {
             $key = $instance->sourceMessages[$source_language][$word];
-            
+
             // get the target language
             $language = self::getLanguage();
             // returns the translated word
             $message = $instance->messages[$language][$key];
-            
-            if (isset($param1))
-            {
+
+            if (isset($param1)) {
                 $message = str_replace('^1', $param1, $message);
             }
-            if (isset($param2))
-            {
+            if (isset($param2)) {
                 $message = str_replace('^2', $param2, $message);
             }
-            if (isset($param3))
-            {
+            if (isset($param3)) {
                 $message = str_replace('^3', $param3, $message);
             }
-            if (isset($param4))
-            {
+            if (isset($param4)) {
                 $message = str_replace('^4', $param4, $message);
             }
             return $message;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
-    
+
     /**
      * Translate a template file
      */
     public static function translateTemplate($template)
     {
         // search by translated words
-        if(preg_match_all( '!_t\{(.*?)\}!i', $template, $match ) > 0)
-        {
-            foreach($match[1] as $word)
-            {
+        if (preg_match_all('!_t\{(.*?)\}!i', $template, $match) > 0) {
+            foreach ($match[1] as $word) {
                 $translated = _t($word);
-                $template = str_replace('_t{'.$word.'}', $translated, $template);
+                $template = str_replace('_t{' . $word . '}', $translated, $template);
             }
         }
-        
-        if(preg_match_all( '!_tf\{(.*?), (.*?)\}!i', $template, $matches ) > 0)
-        {
-            foreach($matches[0] as $key => $match)
-            {
+
+        if (preg_match_all('!_tf\{(.*?), (.*?)\}!i', $template, $matches) > 0) {
+            foreach ($matches[0] as $key => $match) {
                 $raw        = $matches[0][$key];
                 $word       = $matches[1][$key];
                 $from       = $matches[2][$key];

@@ -2,13 +2,15 @@
 
 use Adianti\Database\TRecord;
 
-class Empresas extends TRecord {
-    
-    CONST TABLENAME = 'empresas';
-    CONST PRIMARYKEY = 'id';
-    CONST IDPOLICY = 'max';
+class Cliente extends TRecord
+{
 
-    public function __construct($id = NULL, $callObjectLoad = TRUE) {
+    const TABLENAME = 'Cliente';
+    const PRIMARYKEY = 'id';
+    const IDPOLICY = 'max';
+
+    public function __construct($id = NULL, $callObjectLoad = TRUE)
+    {
         parent::__construct($id, $callObjectLoad);
         parent::addAttribute('system_user_id');
         parent::addAttribute('razao_social');
@@ -22,25 +24,26 @@ class Empresas extends TRecord {
     }
 
 
-    public static function getEmpresaByApiKey($apiKey) {
+    public static function getClienteByApiKey($apiKey)
+    {
         if (empty($apiKey)) {
             throw new Exception("API Key não fornecida.");
         }
         $apiKey = hash('sha256', $apiKey);
-        $empresa = Empresas::where('api_key', '=', $apiKey)->first();
+        $cliente = Cliente::where('api_key', '=', $apiKey)->first();
 
-        if (!$empresa) {
-            throw new Exception("Empresa não encontrada para a API Key informada.");
+        if (!$cliente) {
+            throw new Exception("Cliente não encontrada para a API Key informada.");
         }
-        return $empresa;
+        return $cliente;
     }
 
-    public function isEmpresaExistente($id) {
-        $existe = Empresas::where('id', '=', $id)->first();
-        if(!$existe) {
-            return throw new Exception("Empresa com ID $id não encontrada.");
-        }
-        else {
+    public function isClienteExistente($id)
+    {
+        $existe = Cliente::where('id', '=', $id)->first();
+        if (!$existe) {
+            return throw new Exception("Cliente com ID $id não encontrada.");
+        } else {
             return $existe;
         }
     }
