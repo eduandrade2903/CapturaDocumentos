@@ -185,26 +185,26 @@ RewriteRule ^user-groups/([A-Za-z0-9]*)$ rest.php?class=SystemUserGroupRestServi
 RewriteRule ^user-groups/([A-Za-z-_0-9]*)/([A-Za-z-_0-9]*)$ rest.php?class=SystemUserGroupRestService&method=$2&id=$1&%{QUERY_STRING} [NC]
 RewriteRule ^user-groups$ rest.php?class=SystemUserGroupRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^empresas$ rest.php?class=EmpresasRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^empresas/([A-Za-z0-9]*)$ rest.php?class=EmpresasRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^cliente$ rest.php?class=ClienteRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^cliente/([A-Za-z0-9]*)$ rest.php?class=ClienteRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^webhook-events$ rest.php?class=WebhookEventsRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^webhook-event$ rest.php?class=WebhookEventRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^usuarios$ rest.php?class=UsuariosRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^usuarios/([A-Za-z0-9]*)$ rest.php?class=UsuariosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^processo$ rest.php?class=ProcessoRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^processo/([A-Za-z0-9]*)$ rest.php?class=ProcessoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^collections$ rest.php?class=CollectionRequestsRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^collections/([0-9]+)$ rest.php?class=CollectionRequestsRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
-RewriteRule ^collections/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestsRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collection$ rest.php?class=CollectionRequestsRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collection/([0-9]+)$ rest.php?class=CollectionRequestsRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^collection/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestsRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
 
 RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^collectionDocumento$ rest.php?class=CollectionRequestDocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 
-RewriteRule ^documentos$ rest.php?class=DocumentosRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^documentos/([A-Za-z0-9]*)$ rest.php?class=DocumentosRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+RewriteRule ^documento$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^documento/([A-Za-z0-9]*)$ rest.php?class=DocumentoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^documentosAnalise$ rest.php?class=DocumentosRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^documentosAnalise$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 
 <FilesMatch "^(composer\.phar|composer\.json|composer\.lock)$">
   Require all denied
