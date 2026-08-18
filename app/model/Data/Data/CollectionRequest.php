@@ -4,69 +4,74 @@ use Adianti\Database\TRecord;
 
 class CollectionRequest extends TRecord
 {
-    const TABLENAME = 'collection_requests';
-    const PRIMARYKEY= 'id';
+    const TABLENAME = 'collection_request';
+    const PRIMARYKEY = 'id';
     const IDPOLICY =  'max'; // {max, serial}
 
 
     public function __construct($id = NULL, $callObjectLoad = TRUE)
     {
         parent::__construct($id, $callObjectLoad);
-        parent::addAttribute('empresa_id');
-        parent::addAttribute('usuario_id');
+        parent::addAttribute('cliente_id');
+        parent::addAttribute('processo_id');
         parent::addAttribute('token_unico');
         parent::addAttribute('status');
         parent::addAttribute('data_criacao');
         parent::addAttribute('data_expiracao');
     }
 
-    public function get_empresa()
+    public function get_cliente()
     {
-        return new Empresas($this->empresa_id);
+        return new Cliente($this->cliente_id);
     }
 
-    public function get_usuario()
+    public function get_processo()
     {
-        return new Usuarios($this->usuario_id);
+        return new Processo($this->processo_id);
     }
 
-    public static function getByToken(string $token) {
+    public static function getByToken(string $token)
+    {
         $collection = CollectionRequest::where('token_unico', '=', $token)->first();
 
-        if(!$collection) { throw new Exception("Erro ao lacalizar Collection."); }
+        if (!$collection) {
+            throw new Exception("Erro ao lacalizar Collection.");
+        }
 
         $return = $collection->toArray();
-        $return['usuario'] = $collection->usuario->nome_completo;
-        $return['empresa'] = $collection->empresa->razao_social;
+        $return['processo'] = $collection->processo->nome_completo;
+        $return['cliente'] = $collection->cliente->razao_social;
 
         unset($return['token_unico']);
-        unset($return['empresa_id']);
-        unset($return['usuario_id']);
+        unset($return['cliente_id']);
+        unset($return['processo_id']);
         return $return;
     }
 
-    public static function isCollectionRequestExistente($id) {
+    public static function isCollectionRequestExistente($id)
+    {
         $existe = CollectionRequest::where('id', '=', $id)->first();
-        if(!$existe) {
+        if (!$existe) {
             return throw new Exception("Solicitação de coleta com ID $id não encontrada.");
-        }
-        else {
+        } else {
             return $existe;
         }
     }
 
 
-    public function geraToken(){
+    public function geraToken()
+    {
         $token = bin2hex(random_bytes(16));
         $this->token_unico = hash('sha256', $token);
         $this->data_criacao = date('Y-m-d H:i:s');
         $this->data_expiracao = date('Y-m-d H:i:s', strtotime('+1 day')); // Token válido por 1 dia
     }
 
-    public static function registra($empresaId, $usuarioId, $status = 'pendente') {
+    public static function registra($clienteId, $processoId, $status = 'pendente')
+    {
         $coleta = new self();
-        $coleta->empresa_id = $empresaId;
-        $coleta->usuario_id = $usuarioId;
+        $coleta->cliente_id = $clienteId;
+        $coleta->processo_id = $processoId;
         $coleta->status = $status;
 
         $token = $coleta->geraToken();
@@ -76,5 +81,4 @@ class CollectionRequest extends TRecord
             'token_limpo' => $token
         ];
     }
-    
 }

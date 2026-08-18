@@ -2,15 +2,17 @@
 
 use Adianti\Database\TRecord;
 
-class Documentos extends TRecord {
+class Documento extends TRecord
+{
 
-    CONST TABLENAME = 'documentos';
-    CONST PRIMARYKEY = 'id';
-    CONST IDPOLICY = 'max';
+    const TABLENAME = 'documento';
+    const PRIMARYKEY = 'id';
+    const IDPOLICY = 'max';
 
-    public function __construct($id = NULL, $callObjectLoad = TRUE) {
+    public function __construct($id = NULL, $callObjectLoad = TRUE)
+    {
         parent::__construct($id, $callObjectLoad);
-        parent::addAttribute('request_id');
+        parent::addAttribute('collection_request_id');
         parent::addAttribute('tipo_documento_id');
         parent::addAttribute('storage_path');
         parent::addAttribute('status');

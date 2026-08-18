@@ -5,12 +5,12 @@ use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
 /**
- * Empresas REST service
+ * Cliente REST service
  */
-class EmpresasRestService extends AdiantiRecordService
+class ClienteRestService extends AdiantiRecordService
 {
     const DATABASE      = 'data';
-    const ACTIVE_RECORD = 'Empresas';
+    const ACTIVE_RECORD = 'Cliente';
     const ATTRIBUTES    = ['id', 'razao_social', 'cnpj', 'api_key', 'nome_contato', 'email', 'telefone', 'webhook_url', 'data_cadastro'];
     // const REST_KEY      = 'public';
 
@@ -28,8 +28,8 @@ class EmpresasRestService extends AdiantiRecordService
             $headers = AdiantiCoreApplication::getHeaders();
             $this->API_KEY = $headers['api_key'] ?? 'oi';
 
-            
-                
+
+
             unset($param['class']);
             unset($param['method']);
 
@@ -48,19 +48,19 @@ class EmpresasRestService extends AdiantiRecordService
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
-            return [ 'message' => $e->getMessage() ];
+            return ['message' => $e->getMessage()];
         }
     }
 
     /**
-     * Cria uma nova empresa
+     * Cria uma nova cliente
      * @param array $request['data']=['razao_social', 'cnpj', 'nome_contato', 'email', 'telefone', 'webhook_url']
-     * @return array dados da empresa com a chave de API gerada
+     * @return array dados da cliente com a chave de API gerada
      */
     public function create(array $request): array
     {
         try {
-            
+
 
             $data = $request['data'] ?? [];
 
@@ -77,23 +77,23 @@ class EmpresasRestService extends AdiantiRecordService
             $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
 
             TTransaction::open('data');
-            $empresa = new Empresas();
-            $empresa->fromArray($data);
-            $empresa->api_key = hash('sha256', $chave_api); //Armazena no banco o hash da chave
-            $empresa->data_cadastro = date('Y-m-d H:i:s');
-            $empresa->store();
+            $cliente = new Cliente();
+            $cliente->fromArray($data);
+            $cliente->api_key = hash('sha256', $chave_api); //Armazena no banco o hash da chave
+            $cliente->data_cadastro = date('Y-m-d H:i:s');
+            $cliente->store();
             TTransaction::close();
 
             TTransaction::open('permission');
             $unidade = new SystemUnit;
-            $unidade->name = $empresa->razao_social;
-            $unidade->custom_code = $empresa->id;
+            $unidade->name = $cliente->razao_social;
+            $unidade->custom_code = $cliente->id;
             $unidade->store();
 
             $systemUser = new SystemUser;
-            $systemUser->login = $empresa->email;
-            $systemUser->name = $empresa->razao_social;
-            $systemUser->email = $empresa->email;
+            $systemUser->login = $cliente->email;
+            $systemUser->name = $cliente->razao_social;
+            $systemUser->email = $cliente->email;
             $systemUser->password = SystemUser::passwordHash('Abcd@1234');
             $systemUser->frontpage_id = '30';
             $systemUser->active = 'Y';
@@ -112,85 +112,88 @@ class EmpresasRestService extends AdiantiRecordService
             TTransaction::close();
 
             TTransaction::open('data');
-            $empresa->system_user_id = $systemUser->id;
-            $empresa->store();
+            $cliente->system_user_id = $systemUser->id;
+            $cliente->store();
             TTransaction::close();
 
-            EmpresasService::enviaApiEmailEmpresa($empresa, $chave_api);
+            ClienteService::enviaApiEmailCliente($cliente, $chave_api);
 
             http_response_code(201); // Set HTTP status code to 201 Created
-            return[]; 
-                
+            return [];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500); // Set HTTP status code to 500 Internal Server Error
-            return [ 'message' => $e->getMessage() ];
+            return ['message' => $e->getMessage()];
         }
     }
 
     /**
-     * @description Obtem os dados de uma empresa pela chave de API
+     * @description Obtem os dados de uma cliente pela chave de API
      * @param array $request['data']=['api_key']
-     * @return array dados da empresa
+     * @return array dados da cliente
      */
     public function getByKey(array $request): array
     {
         try {
-            if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+            if (is_null($this->API_KEY)) {
+                throw new Exception('Sem autorizacao.');
+            }
             TTransaction::open('data');
-            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
             TTransaction::close();
 
-            if (!$empresa) {
+            if (!$cliente) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden
                 throw new Exception('Chave de API invalida.');
             }
 
-            unset($empresa->id);
-            unset($empresa->api_key);
+            unset($cliente->id);
+            unset($cliente->api_key);
 
             http_response_code(200); // Set HTTP status code to 200 OK
-            return [ 'empresa' => $empresa->toArray() ];
+            return ['cliente' => $cliente->toArray()];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
-            return [ 'message' => $e->getMessage() ];
+            return ['message' => $e->getMessage()];
         }
     }
 
     /**
-     * @description Atualiza os dados de uma empresa existente
+     * @description Atualiza os dados de uma cliente existente
      * @param array $request['data']=['razao_social', 'cnpj', 'nome_contato', 'email', 'telefone', 'webhook_url']
-     * @return array dados atualizados da empresa
+     * @return array dados atualizados da cliente
      */
     public function update(array $request): array
     {
         try {
-            if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+            if (is_null($this->API_KEY)) {
+                throw new Exception('Sem autorizacao.');
+            }
             $data = $request['data'] ?? [];
 
             TTransaction::open('data');
 
-            $empresa = Empresas::getEmpresaByApiKey($this->API_KEY);
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
 
-            if (!$empresa) {
+            if (!$cliente) {
                 http_response_code(403); // Set HTTP status code to 403 Forbidden
                 throw new Exception('Chave de API invalida');
             }
 
-            $empresa->fromArray($data);
-            $empresa->store();
+            $cliente->fromArray($data);
+            $cliente->store();
             TTransaction::close();
 
-            unset($empresa->id);
-            unset($empresa->api_key);
+            unset($cliente->id);
+            unset($cliente->api_key);
 
             http_response_code(200); // Set HTTP status code to 200 OK
-            return [ 'empresa' => $empresa->toArray() ];
+            return ['cliente' => $cliente->toArray()];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
-            return [ 'message' => $e->getMessage() ];
+            return ['message' => $e->getMessage()];
         }
     }
 }
