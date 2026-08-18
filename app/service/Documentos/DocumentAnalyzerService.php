@@ -52,10 +52,15 @@ class DocumentAnalyzerService
      */
     private static function chamarGeminiAPI($prompt, $mimeType, $base64Image)
     {
-        // Como você já configurou o carregamento do .env no init.php do Adianti,
-        // podemos acessar a chave da API com getenv() com segurança.
-        $apiKey = $_ENV['GEMINI_API_KEY']; 
-        $url = "[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=){$apiKey}";
+        // Pega a chave. Adicionei um fallback para string vazia para evitar warnings
+        $apiKey = $_ENV['GEMINI_API_KEY'] ?? ''; 
+        
+        if (empty($apiKey)) {
+            throw new Exception("Chave da API do Gemini não encontrada no ambiente.");
+        }
+
+        // 1. URL limpa, sem query parameters e sem colchetes de formatação
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
         $payload = [
             "contents" => [
@@ -72,23 +77,44 @@ class DocumentAnalyzerService
                 ]
             ],
             "generationConfig" => [
-                "response_mime_type" => "application/json" // Força o Gemini a devolver JSON puro
+                "response_mime_type" => "application/json"
             ]
         ];
 
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        
+        // 2. Passando a chave pelo Header, exatamente como você viu no cURL de Início Rápido
+        $headers = [
+            'Content-Type: application/json',
+            'X-goog-api-key: ' . $apiKey
+        ];
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Apenas em dev, recomendo true em prod
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Lembre-se de mudar para true em Produção
 
         $response = curl_exec($ch);
+        
+        // 3. Captura erros internos do cURL (ex: falha de DNS, timeout)
+        if (curl_errno($ch)) {
+            $error_msg = curl_error($ch);
+            curl_close($ch);
+            throw new Exception("Erro interno do cURL: " . $error_msg);
+        }
+        
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        // 4. Tratamento melhorado para ver o motivo real da recusa do Google
         if ($httpCode !== 200) {
-            throw new Exception("Erro de comunicação com a IA: " . $response);
+            $response_err = json_decode($response, true);
+            $http_code = $httpCode;
+            return [ 
+                'CODIGO' => $http_code,
+                'message' => $response_err
+            ];
         }
 
         $responseData = json_decode($response, true);
@@ -96,7 +122,7 @@ class DocumentAnalyzerService
         // Extrai o texto gerado pela IA
         $textoRespostaIA = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '{"CODIGO": "500"}';
 
-        // O Gemini já vai devolver a string em formato JSON graças ao response_mime_type
+        // Retorna o Array associativo pronto
         return json_decode($textoRespostaIA, true);
     }
 }
