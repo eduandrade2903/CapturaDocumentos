@@ -188,7 +188,8 @@ RewriteRule ^user-groups$ rest.php?class=SystemUserGroupRestService&method=handl
 RewriteRule ^cliente$ rest.php?class=ClienteRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^cliente/([A-Za-z0-9]*)$ rest.php?class=ClienteRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
-RewriteRule ^webhook-events$ rest.php?class=WebhookEventRestService&method=handle&%{QUERY_STRING} [NC]
+
+RewriteRule ^webhook-event$ rest.php?class=WebhookEventRestService&method=handle&%{QUERY_STRING} [NC]
 
 RewriteRule ^processo$ rest.php?class=ProcessoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^processo/([A-Za-z0-9]*)$ rest.php?class=ProcessoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
