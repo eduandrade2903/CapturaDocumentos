@@ -229,42 +229,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /cliente/{id}:
-    get:
-      tags:
-        - Cliente
-      summary: Consultar Cliente por ID
-      description: Retorna os dados do cliente pelo ID (requer autenticação e autorização compatível).
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID do cliente
-          schema:
-            type: integer
-            example: 1
-      responses:
-        '200':
-          description: Dados do cliente retornados com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  cliente:
-                    $ref: '#/components/schemas/Cliente'
-        '403':
-          description: Acesso não autorizado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Cliente não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  # /cliente/{id}:
+  #   get:
+  #     tags:
+  #       - Cliente
+  #     summary: Consultar Cliente por ID
+  #     description: Retorna os dados do cliente pelo ID (requer autenticação e autorização compatível).
+  #     parameters:
+  #       - name: id
+  #         in: path
+  #         required: true
+  #         description: ID do cliente
+  #         schema:
+  #           type: integer
+  #           example: 1
+  #     responses:
+  #       '200':
+  #         description: Dados do cliente retornados com sucesso
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 cliente:
+  #                   $ref: '#/components/schemas/Cliente'
+  #       '403':
+  #         description: Acesso não autorizado
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ErrorResponse'
+  #       '404':
+  #         description: Cliente não encontrado
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ErrorResponse'
 
   /processo:
     post:
