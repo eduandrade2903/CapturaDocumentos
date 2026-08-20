@@ -25,16 +25,16 @@ class Processo extends TRecord
         return $collection;
     }
 
-    public function verifica()
-    {
-        if (empty($this->nome_completo) || empty($this->num_documento)) {
-            return false;
-        }
-        if (Processo::where('num_documento', '=', $this->num_documento)->first()) {
-            throw new Exception("Número do documento já cadastrado no sistema.");
-        }
-        return true;
-    }
+    // public function verifica()
+    // {
+    //     if (empty($this->nome_completo) || empty($this->num_documento)) {
+    //         return false;
+    //     }
+    //     if (Processo::where('num_documento', '=', $this->num_documento)->first()) {
+    //         throw new Exception("Número do documento já cadastrado no sistema.");
+    //     }
+    //     return true;
+    // }
 
     public static function isProcessoExistente($id)
     {
@@ -46,11 +46,11 @@ class Processo extends TRecord
         }
     }
 
-    public function store()
-    {
-        if (!$this->verifica()) {
-            throw new Exception("Campos obrigatórios não preenchidos.");
-        }
-        parent::store();
-    }
+    // public function store()
+    // {
+    //     if (!$this->verifica()) {
+    //         throw new Exception("Campos obrigatórios não preenchidos.");
+    //     }
+    //     parent::store();
+    // }
 }

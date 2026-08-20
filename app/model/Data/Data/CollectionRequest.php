@@ -25,7 +25,7 @@ class CollectionRequest extends TRecord
         return new Cliente($this->cliente_id);
     }
 
-    public function get_processo()
+    public function get_processo($id)
     {
         return new Processo($this->processo_id);
     }
@@ -61,24 +61,26 @@ class CollectionRequest extends TRecord
 
     public function geraToken()
     {
-        $token = bin2hex(random_bytes(16));
-        $this->token_unico = hash('sha256', $token);
+        $this->token_unico = bin2hex(random_bytes(8));
         $this->data_criacao = date('Y-m-d H:i:s');
         $this->data_expiracao = date('Y-m-d H:i:s', strtotime('+1 day')); // Token válido por 1 dia
     }
 
     public static function registra($clienteId, $processoId, $status = 'pendente')
     {
-        $coleta = new self();
-        $coleta->cliente_id = $clienteId;
-        $coleta->processo_id = $processoId;
-        $coleta->status = $status;
-
-        $token = $coleta->geraToken();
-        $coleta->store();
-        return [
-            'model'       => $coleta,
-            'token_limpo' => $token
-        ];
+        try {
+            $coleta = new self();
+            $coleta->cliente_id = $clienteId;
+            $coleta->processo_id = $processoId;
+            $coleta->status = $status;
+            $coleta->geraToken();
+            $coleta->store();
+            return [
+                'model'       => $coleta,
+                'token_limpo' => $coleta->token_unico
+            ];
+        } catch (Exception $e) {
+            throw new Exception('Erro ao registrar coleta: ' . $e->getMessage());
+        }
     }
 }

@@ -288,7 +288,7 @@ paths:
                   type: object
                   required:
                     - nome_completo
-                    - cpf
+                    - num_documento
                     - email
                     - telefone
                     - tipos_documentos
@@ -297,9 +297,9 @@ paths:
                       type: string
                       description: Nome completo do titular do processo
                       example: Maria Oliveira Souza
-                    cpf:
+                    num_documento:
                       type: string
-                      description: CPF do titular (único no sistema)
+                      description: Numero de um documento do titular
                       example: "12345678901"
                     email:
                       type: string
@@ -385,33 +385,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-    delete:
-      tags:
-        - Processo
-      summary: Excluir Processos em Lote
-      description: Remove todos os processos que atendem aos filtros especificados.
-      parameters:
-        - $ref: '#/components/parameters/filtersParam'
-      responses:
-        '200':
-          description: Processos excluídos com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: string
-                    example: Registros excluídos com sucesso
-        '403':
-          description: Chave de API inválida ou ausente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # delete:
+    #   tags:
+    #     - Processo
+    #   summary: Excluir Processos em Lote
+    #   description: Remove todos os processos que atendem aos filtros especificados.
+    #   parameters:
+    #     - $ref: '#/components/parameters/filtersParam'
+    #   responses:
+    #     '200':
+    #       description: Processos excluídos com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #               data:
+    #                 type: string
+    #                 example: Registros excluídos com sucesso
+    #     '403':
+    #       description: Chave de API inválida ou ausente
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
   /processo/{id}:
     get:
@@ -500,36 +500,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-    delete:
-      tags:
-        - Processo
-      summary: Excluir Processo por ID
-      description: Remove um processo específico a partir de seu identificador numérico.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID do processo a ser removido
-          schema:
-            type: integer
-            example: 42
-      responses:
-        '200':
-          description: Processo excluído com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        '400':
-          description: Falha ao excluir processo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # delete:
+    #   tags:
+    #     - Processo
+    #   summary: Excluir Processo por ID
+    #   description: Remove um processo específico a partir de seu identificador numérico.
+    #   parameters:
+    #     - name: id
+    #       in: path
+    #       required: true
+    #       description: ID do processo a ser removido
+    #       schema:
+    #         type: integer
+    #         example: 42
+    #   responses:
+    #     '200':
+    #       description: Processo excluído com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #     '400':
+    #       description: Falha ao excluir processo
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
   /collection:
     post:
