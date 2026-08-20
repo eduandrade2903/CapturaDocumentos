@@ -238,7 +238,7 @@ class DocumentoRestService extends AdiantiRecordService
                     $payloadOcr = json_encode($extractedDataParam);
                 }
 
-                $extratedData = new ExtratedData();
+                $extratedData = new ExtractedData();
                 $extratedData->collection_request_id = $requestId;
                 $extratedData->payload_ocr = $payloadOcr;
                 $extratedData->processado_em = date('Y-m-d H:i:s');
