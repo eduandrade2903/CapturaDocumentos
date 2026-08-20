@@ -28,7 +28,8 @@ class DocumentoRestService extends AdiantiRecordService
             throw new Exception('Sem autorizacao.');
         }
 
-        if ($param['ia'] == 'true') {
+        
+        if (isset($param['ia']) && $param['ia'] == 'true') {
             return $this->analizer($param);
         }
 

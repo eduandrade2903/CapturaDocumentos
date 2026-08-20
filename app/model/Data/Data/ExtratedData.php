@@ -2,9 +2,9 @@
 
 use Adianti\Database\TRecord;
 
-class ExtratedData extends TRecord {
+class ExtractedData extends TRecord {
 
-    CONST TABLENAME = 'extrated_data';
+    CONST TABLENAME = 'extracted_data';
     CONST PRIMARYKEY = 'id';
     CONST IDPOLICY = 'max';
 
