@@ -60,8 +60,6 @@ class ClienteRestService extends AdiantiRecordService
     public function create(array $request): array
     {
         try {
-
-
             $data = $request['data'] ?? [];
 
             if ($data['razao_social'] === null || $data['cnpj'] === null || $data['nome_contato'] === null || $data['email'] === null) {
