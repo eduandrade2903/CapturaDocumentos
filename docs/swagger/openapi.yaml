@@ -532,55 +532,55 @@ paths:
     #             $ref: '#/components/schemas/ErrorResponse'
 
   /collection:
-    post:
-      tags:
-        - CollectionRequest
-      summary: Criar Solicitação de Coleta Manual
-      description: Cria um registro avulso de solicitação de coleta vinculado a um cliente e processo.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - cliente_id
-                - processo_id
-              properties:
-                cliente_id:
-                  type: integer
-                  description: ID do cliente solicitante
-                  example: 1
-                processo_id:
-                  type: integer
-                  description: ID do processo/titular
-                  example: 42
-                status:
-                  type: string
-                  description: Status inicial (padrão 'pendente')
-                  example: pendente
-      responses:
-        '201':
-          description: Solicitação de coleta criada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  message:
-                    type: string
-                    example: Solicitação de coleta criada com sucesso
-                  data:
-                    $ref: '#/components/schemas/CollectionRequest'
-        '400':
-          description: Erro nos parâmetros da requisição
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # post:
+    #   tags:
+    #     - CollectionRequest
+    #   summary: Criar Solicitação de Coleta Manual
+    #   description: Cria um registro avulso de solicitação de coleta vinculado a um cliente e processo.
+    #   requestBody:
+    #     required: true
+    #     content:
+    #       application/json:
+    #         schema:
+    #           type: object
+    #           required:
+    #             - cliente_id
+    #             - processo_id
+    #           properties:
+    #             cliente_id:
+    #               type: integer
+    #               description: ID do cliente solicitante
+    #               example: 1
+    #             processo_id:
+    #               type: integer
+    #               description: ID do processo/titular
+    #               example: 42
+    #             status:
+    #               type: string
+    #               description: Status inicial (padrão 'pendente')
+    #               example: pendente
+    #   responses:
+    #     '201':
+    #       description: Solicitação de coleta criada com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #               message:
+    #                 type: string
+    #                 example: Solicitação de coleta criada com sucesso
+    #               data:
+    #                 $ref: '#/components/schemas/CollectionRequest'
+    #     '400':
+    #       description: Erro nos parâmetros da requisição
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
     get:
       tags:
@@ -643,16 +643,16 @@ paths:
                     type: string
                     example: success
 
-    delete:
-      tags:
-        - CollectionRequest
-      summary: Excluir Solicitações de Coleta em Lote
-      description: Exclui solicitações de coleta que satisfaçam aos filtros enviados.
-      parameters:
-        - $ref: '#/components/parameters/filtersParam'
-      responses:
-        '200':
-          description: Solicitações excluídas com sucesso
+    # delete:
+    #   tags:
+    #     - CollectionRequest
+    #   summary: Excluir Solicitações de Coleta em Lote
+    #   description: Exclui solicitações de coleta que satisfaçam aos filtros enviados.
+    #   parameters:
+    #     - $ref: '#/components/parameters/filtersParam'
+    #   responses:
+    #     '200':
+    #       description: Solicitações excluídas com sucesso
 
   /collection/{id}:
     get:

@@ -25,7 +25,7 @@ class CollectionRequest extends TRecord
         return new Cliente($this->cliente_id);
     }
 
-    public function get_processo($id)
+    public function get_processo()
     {
         return new Processo($this->processo_id);
     }

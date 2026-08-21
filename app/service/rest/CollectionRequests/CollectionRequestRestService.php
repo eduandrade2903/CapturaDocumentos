@@ -58,25 +58,20 @@ class CollectionRequestRestService extends AdiantiRecordService
             case 'GET':
                 if (!empty($param['token_unico'])) {
                     return $this->getByTokenUnico($param['token_unico']);
-                } elseif (!empty($param['id'])) {
-                    //return $this->getCollectionrequestdocumentoById($param);
                 } else {
-                    //return $this->getCollectionrequestdocumento($param);
+                    return $this->loadAll($param);
                 }
-                break;
-            case 'POST':
-                return $this->create($param);
                 break;
             case 'PUT':
                 return $this->store($param);
                 break;
             case 'DELETE':
-                if (!empty($param['id'])) {
+                if (!empty($param['token_unico'])) {
                     return $this->delete($param);
-                } else {
-                    return $this->deleteAll($param);
                 }
                 break;
+            default:
+                throw new Exception('Método não permitido.');
         }
     }
 

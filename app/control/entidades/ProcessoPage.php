@@ -52,7 +52,7 @@ class ProcessoPage extends TPage
         // create the form fields
         $id     = new TEntry('id');
         $nome   = new TEntry('nome_completo');
-        $cpf    = new TEntry('cpf');
+        $cpf    = new TEntry('num_documento');
         $email  = new TEntry('email');
         $telefone = new TEntry('telefone');
         $tipos_documentos = new TDBMultiCombo('tipos_documentos', 'data', 'TiposDocumentos', 'id', 'nome');
@@ -63,13 +63,13 @@ class ProcessoPage extends TPage
         // add the form fields
         $this->form->addFields([new TLabel('ID')],    [$id]);
         $this->form->addFields([new TLabel('Name', 'red')],  [$nome]);
-        $this->form->addFields([new TLabel('CPF', 'red')], [$cpf]);
+        $this->form->addFields([new TLabel('Num. Documento', 'red')], [$cpf]);
         $this->form->addFields([new TLabel('Email', 'red')], [$email]);
         $this->form->addFields([new TLabel('Telefone', 'red')], [$telefone]);
         $this->form->addFields([new TLabel('Documento Requeridos', 'red')], [$tipos_documentos]);
 
         $nome->addValidation('Name', new TRequiredValidator);
-        $cpf->addValidation('CPF', new TRequiredValidator);
+        $cpf->addValidation('Num. Documento', new TRequiredValidator);
         $email->addValidation('Email', new TRequiredValidator);
         $telefone->addValidation('Telefone', new TRequiredValidator);
 
@@ -86,7 +86,7 @@ class ProcessoPage extends TPage
         // add the columns        
         $col_id    = new TDataGridColumn('id', 'Id', 'right', '10%');
         $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '50%');
-        $cpf       = new TDataGridColumn('cpf', 'CPF', 'left', '20%');
+        $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '20%');
         $status    = new TDataGridColumn('collection->status', 'Status', 'left', '20%');
 
 
@@ -140,7 +140,7 @@ class ProcessoPage extends TPage
         try {
             $cliente_id = $_SESSION['template']['userunitcustomcode'];
 
-            $param['cpf'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['cpf'])));
+            $param['num_documento'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['num_documento'])));
             $param['telefone'] = str_replace(')', '', str_replace('(', '', str_replace('-', '', str_replace(' ', '', $param['telefone']))));
 
             TTransaction::open('data');
