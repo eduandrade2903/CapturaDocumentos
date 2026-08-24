@@ -183,7 +183,16 @@ class CollectionRequestRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::getByToken($param);
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $param)->where('cliente_id', '=', $this->cliente->id)->first();
+
+            if(!isset($collectionRequest)) {
+                TTransaction::close();
+                http_response_code(404);
+                return [
+                    'status' => 'error',
+                    'message' => 'Token não encontrado.'
+                ];
+            }
 
             $dados = $collectionRequest->toArray();
 
