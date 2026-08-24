@@ -195,7 +195,6 @@ RewriteRule ^processo$ rest.php?class=ProcessoRestService&method=handle&%{QUERY_
 RewriteRule ^processo/([A-Za-z0-9]*)$ rest.php?class=ProcessoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
 RewriteRule ^collection$ rest.php?class=CollectionRequestRestService&method=handle&%{QUERY_STRING} [NC]
-RewriteRule ^collection/([0-9]+)$ rest.php?class=CollectionRequestRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 RewriteRule ^collection/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestRestService&method=handle&token_unico=$1&%{QUERY_STRING} [NC]
 
 RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=handle&%{QUERY_STRING} [NC]

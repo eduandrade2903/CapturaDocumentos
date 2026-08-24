@@ -22,7 +22,6 @@ class CollectionRequestRestService extends AdiantiRecordService
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
         $this->API_KEY = $headers['api_key'] ?? null;
-        $this->API_KEY = $headers['api_key'] ?? null;
 
         if (is_null($this->API_KEY)) {
             throw new Exception('Sem autorizacao.');
@@ -172,11 +171,11 @@ class CollectionRequestRestService extends AdiantiRecordService
             TTransaction::open('data');
             $collectionRequest = CollectionRequest::getByToken($param);
 
-            $dados = $collectionRequest;
+            $dados = $collectionRequest->toArray();
 
             if ($collectionRequest) {
-                $collectionrequestdocumento = Collectionrequestdocumento::where('collection_request_id', '=', $collectionRequest['id'])->load();
-                $documento = Documento::where('collection_request_id', '=', $collectionRequest['id'])->load();
+                $collectionrequestdocumento = Collectionrequestdocumento::where('collection_request_id', '=', $collectionRequest->id)->load();
+                $documento = Documento::where('collection_request_id', '=', $collectionRequest->id)->load();
 
                 // AJUSTE AQUI: Injetando o nome do documento direto na resposta
                 $dados['documentos_solicitados'] = array_map(function ($item) {

@@ -41,7 +41,6 @@ class CollectionRequest extends TRecord
         $collection->processo = $collection->processo->nome_completo;
         $collection->cliente = $collection->cliente->razao_social;
 
-        unset($collection->token_unico);
         unset($collection->cliente_id);
         unset($collection->processo_id);
         return $collection;
