@@ -115,6 +115,15 @@ class CollectionRequestRestService extends AdiantiRecordService
             TTransaction::open('data');
             $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
 
+            if(!$collectionRequest) {
+                TTransaction::close();
+                http_response_code(404);
+                return [
+                    'status' => 'error',
+                    'message' => 'Token não encontrado.'
+                ];
+            }
+
             $collectionRequest->status = $dados['status'];
             $collectionRequest->data_expiracao = $dados['data_expiracao'];
             $collectionRequest->store();
