@@ -144,16 +144,29 @@ class CollectionRequestRestService extends AdiantiRecordService
         }
     }
 
-    public function getById($param)
+    public function delete($param)
     {
         try {
+            $dados = $param['data'];
+            
             TTransaction::open('data');
-            $collectionRequest = new CollectionRequest($param['id']);
-            TTransaction::close();
+            $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
 
+            if(isset($collectionRequest->id)) {
+                $collectionRequest->delete();
+                TTransaction::close();
+                http_response_code(204);
+                return [
+                    'status' => 'success',
+                    'message' => 'Solicitação de coleta excluída com sucesso',
+                ];
+            }
+
+            TTransaction::close();
+            http_response_code(404);
             return [
-                'status' => 'success',
-                'data' => $collectionRequest->toArray()
+                'status' => 'error',
+                'message' => 'Token não encontrado.'
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
