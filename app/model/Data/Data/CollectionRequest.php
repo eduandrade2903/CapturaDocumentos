@@ -38,14 +38,13 @@ class CollectionRequest extends TRecord
             throw new Exception("Erro ao lacalizar Collection.");
         }
 
-        $return = $collection->toArray();
-        $return['processo'] = $collection->processo->nome_completo;
-        $return['cliente'] = $collection->cliente->razao_social;
+        $collection->processo = $collection->processo->nome_completo;
+        $collection->cliente = $collection->cliente->razao_social;
 
-        unset($return['token_unico']);
-        unset($return['cliente_id']);
-        unset($return['processo_id']);
-        return $return;
+        unset($collection->token_unico);
+        unset($collection->cliente_id);
+        unset($collection->processo_id);
+        return $collection;
     }
 
     public static function isCollectionRequestExistente($id)
