@@ -11,6 +11,7 @@ class CollectionRequestRestService extends AdiantiRecordService
     const ATTRIBUTES    = ['id', 'cliente_id', 'processo_id', 'token_unico', 'status', 'data_criacao', 'data_expiracao'];
 
     protected string $API_KEY;
+    protected Cliente $cliente;
 
     /**
      * Método padrão para tratamento de requisições HTTP.
@@ -28,9 +29,9 @@ class CollectionRequestRestService extends AdiantiRecordService
         }
 
         TTransaction::open('data');
-        $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+        $this->cliente = Cliente::getClienteByApiKey($this->API_KEY);
         TTransaction::close();
-        if (empty($cliente->id)) {
+        if (empty($this->cliente->id)) {
             throw new Exception('Sem autorizacao.');
         }
 
@@ -50,7 +51,7 @@ class CollectionRequestRestService extends AdiantiRecordService
             }
         }
         // Insere o filtro para trazer apenas solicitações da cliente autenticada
-        $param['filters'][] = ['cliente_id', '=', $cliente->id];
+        $param['filters'][] = ['cliente_id', '=', $this->cliente->id];
 
 
         switch ($method) {
@@ -112,7 +113,7 @@ class CollectionRequestRestService extends AdiantiRecordService
             $dados = $param['data'];
             
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $dados['token_unico'])->where('cliente_id', '=', $this->cliente->id)->first();
 
             if(!$collectionRequest) {
                 TTransaction::close();
@@ -147,10 +148,10 @@ class CollectionRequestRestService extends AdiantiRecordService
     public function delete($param)
     {
         try {
-            $dados = $param['data'];
+            $token_unico = $param['token_unico'] ?? null;
             
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $token_unico)->where('cliente_id', '=', $this->cliente->id)->first();
 
             if(isset($collectionRequest->id)) {
                 $collectionRequest->delete();

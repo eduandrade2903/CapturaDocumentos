@@ -654,58 +654,24 @@ paths:
     #     '200':
     #       description: Solicitações excluídas com sucesso
 
-  /collection/{id}:
-    get:
-      tags:
-        - CollectionRequest
-      summary: Consultar Solicitação de Coleta por ID
-      description: Retorna os dados de uma solicitação de coleta específica pelo ID.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID da solicitação de coleta
-          schema:
-            type: integer
-            example: 18
-      responses:
-        '200':
-          description: Solicitação encontrada
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/CollectionRequest'
-        '400':
-          description: Solicitação não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+  /collection/{token_unico}:
     delete:
       tags:
         - CollectionRequest
-      summary: Excluir Solicitação de Coleta por ID
-      description: Remove uma solicitação de coleta pelo ID.
+      summary: Excluir Solicitação de Coleta por token_unico
+      description: Remove uma solicitação de coleta pelo token_unico.
       parameters:
-        - name: id
+        - name: token_unico
           in: path
           required: true
-          description: ID da solicitação a ser removida
+          description: token_unico da solicitação a ser removida
           schema:
-            type: integer
-            example: 18
+            type: string
+            example: 7ef22ecb708722cd
       responses:
         '200':
           description: Solicitação excluída com sucesso
 
-  /collection/{token_unico}:
     get:
       tags:
         - CollectionRequest
