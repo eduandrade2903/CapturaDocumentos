@@ -63,7 +63,7 @@ class CollectionRequestRestService extends AdiantiRecordService
                 }
                 break;
             case 'PUT':
-                return $this->store($param);
+                return $this->update($param);
                 break;
             case 'DELETE':
                 if (!empty($param['token_unico'])) {
@@ -107,6 +107,33 @@ class CollectionRequestRestService extends AdiantiRecordService
         }
     }
 
+    public function update($param)
+    {
+        try {
+            $dados = $param['data'];
+            
+            TTransaction::open('data');
+            $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
+
+            $collectionRequest->status = $dados['status'];
+            $collectionRequest->store();
+
+            TTransaction::close();
+            http_response_code(200);
+            return [
+                'status' => 'success',
+                'message' => 'Solicitação de coleta atualizada com sucesso',
+                'data' => $collectionRequest->toArray()
+            ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(400);
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
 
     public function getById($param)
     {

@@ -619,7 +619,7 @@ paths:
       tags:
         - CollectionRequest
       summary: Atualizar Solicitação de Coleta
-      description: Atualiza os dados de uma solicitação de coleta existente.
+      description: Atualiza o status de uma solicitação.
       requestBody:
         required: true
         content:
@@ -1373,28 +1373,14 @@ components:
     CollectionRequest:
       type: object
       properties:
-        id:
-          type: integer
-          example: 18
-        cliente_id:
-          type: integer
-          description: ID do cliente solicitante
-          example: 1
-        processo_id:
-          type: integer
-          description: ID do processo/titular
-          example: 42
         token_unico:
           type: string
-          description: Hash SHA256 do token único gerado para a jornada de envio
-          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          description: Token único gerado para a jornada de envio
+          example: e3b0c44298fc1c149
         status:
           type: string
           description: Status do ciclo de vida da coleta
           example: pendente
-        data_criacao:
-          type: string
-          example: "2026-07-27 11:35:00"
         data_expiracao:
           type: string
           example: "2026-07-28 11:35:00"
