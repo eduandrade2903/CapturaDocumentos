@@ -288,7 +288,7 @@ paths:
                   type: object
                   required:
                     - nome_completo
-                    - cpf
+                    - num_documento
                     - email
                     - telefone
                     - tipos_documentos
@@ -297,9 +297,9 @@ paths:
                       type: string
                       description: Nome completo do titular do processo
                       example: Maria Oliveira Souza
-                    cpf:
+                    num_documento:
                       type: string
-                      description: CPF do titular (único no sistema)
+                      description: Numero de um documento do titular
                       example: "12345678901"
                     email:
                       type: string
@@ -385,33 +385,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-    delete:
-      tags:
-        - Processo
-      summary: Excluir Processos em Lote
-      description: Remove todos os processos que atendem aos filtros especificados.
-      parameters:
-        - $ref: '#/components/parameters/filtersParam'
-      responses:
-        '200':
-          description: Processos excluídos com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: string
-                    example: Registros excluídos com sucesso
-        '403':
-          description: Chave de API inválida ou ausente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # delete:
+    #   tags:
+    #     - Processo
+    #   summary: Excluir Processos em Lote
+    #   description: Remove todos os processos que atendem aos filtros especificados.
+    #   parameters:
+    #     - $ref: '#/components/parameters/filtersParam'
+    #   responses:
+    #     '200':
+    #       description: Processos excluídos com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #               data:
+    #                 type: string
+    #                 example: Registros excluídos com sucesso
+    #     '403':
+    #       description: Chave de API inválida ou ausente
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
   /processo/{id}:
     get:
@@ -500,87 +500,87 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-    delete:
-      tags:
-        - Processo
-      summary: Excluir Processo por ID
-      description: Remove um processo específico a partir de seu identificador numérico.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID do processo a ser removido
-          schema:
-            type: integer
-            example: 42
-      responses:
-        '200':
-          description: Processo excluído com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        '400':
-          description: Falha ao excluir processo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # delete:
+    #   tags:
+    #     - Processo
+    #   summary: Excluir Processo por ID
+    #   description: Remove um processo específico a partir de seu identificador numérico.
+    #   parameters:
+    #     - name: id
+    #       in: path
+    #       required: true
+    #       description: ID do processo a ser removido
+    #       schema:
+    #         type: integer
+    #         example: 42
+    #   responses:
+    #     '200':
+    #       description: Processo excluído com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #     '400':
+    #       description: Falha ao excluir processo
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
   /collection:
-    post:
-      tags:
-        - CollectionRequest
-      summary: Criar Solicitação de Coleta Manual
-      description: Cria um registro avulso de solicitação de coleta vinculado a um cliente e processo.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - cliente_id
-                - processo_id
-              properties:
-                cliente_id:
-                  type: integer
-                  description: ID do cliente solicitante
-                  example: 1
-                processo_id:
-                  type: integer
-                  description: ID do processo/titular
-                  example: 42
-                status:
-                  type: string
-                  description: Status inicial (padrão 'pendente')
-                  example: pendente
-      responses:
-        '201':
-          description: Solicitação de coleta criada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  message:
-                    type: string
-                    example: Solicitação de coleta criada com sucesso
-                  data:
-                    $ref: '#/components/schemas/CollectionRequest'
-        '400':
-          description: Erro nos parâmetros da requisição
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+    # post:
+    #   tags:
+    #     - CollectionRequest
+    #   summary: Criar Solicitação de Coleta Manual
+    #   description: Cria um registro avulso de solicitação de coleta vinculado a um cliente e processo.
+    #   requestBody:
+    #     required: true
+    #     content:
+    #       application/json:
+    #         schema:
+    #           type: object
+    #           required:
+    #             - cliente_id
+    #             - processo_id
+    #           properties:
+    #             cliente_id:
+    #               type: integer
+    #               description: ID do cliente solicitante
+    #               example: 1
+    #             processo_id:
+    #               type: integer
+    #               description: ID do processo/titular
+    #               example: 42
+    #             status:
+    #               type: string
+    #               description: Status inicial (padrão 'pendente')
+    #               example: pendente
+    #   responses:
+    #     '201':
+    #       description: Solicitação de coleta criada com sucesso
+    #       content:
+    #         application/json:
+    #           schema:
+    #             type: object
+    #             properties:
+    #               status:
+    #                 type: string
+    #                 example: success
+    #               message:
+    #                 type: string
+    #                 example: Solicitação de coleta criada com sucesso
+    #               data:
+    #                 $ref: '#/components/schemas/CollectionRequest'
+    #     '400':
+    #       description: Erro nos parâmetros da requisição
+    #       content:
+    #         application/json:
+    #           schema:
+    #             $ref: '#/components/schemas/ErrorResponse'
 
     get:
       tags:
@@ -619,7 +619,7 @@ paths:
       tags:
         - CollectionRequest
       summary: Atualizar Solicitação de Coleta
-      description: Atualiza os dados de uma solicitação de coleta existente.
+      description: Atualiza o status de uma solicitação.
       requestBody:
         required: true
         content:
@@ -643,16 +643,16 @@ paths:
                     type: string
                     example: success
 
-    delete:
-      tags:
-        - CollectionRequest
-      summary: Excluir Solicitações de Coleta em Lote
-      description: Exclui solicitações de coleta que satisfaçam aos filtros enviados.
-      parameters:
-        - $ref: '#/components/parameters/filtersParam'
-      responses:
-        '200':
-          description: Solicitações excluídas com sucesso
+    # delete:
+    #   tags:
+    #     - CollectionRequest
+    #   summary: Excluir Solicitações de Coleta em Lote
+    #   description: Exclui solicitações de coleta que satisfaçam aos filtros enviados.
+    #   parameters:
+    #     - $ref: '#/components/parameters/filtersParam'
+    #   responses:
+    #     '200':
+    #       description: Solicitações excluídas com sucesso
 
   /collection/{id}:
     get:
@@ -1373,28 +1373,14 @@ components:
     CollectionRequest:
       type: object
       properties:
-        id:
-          type: integer
-          example: 18
-        cliente_id:
-          type: integer
-          description: ID do cliente solicitante
-          example: 1
-        processo_id:
-          type: integer
-          description: ID do processo/titular
-          example: 42
         token_unico:
           type: string
-          description: Hash SHA256 do token único gerado para a jornada de envio
-          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          description: Token único gerado para a jornada de envio
+          example: e3b0c44298fc1c149
         status:
           type: string
           description: Status do ciclo de vida da coleta
           example: pendente
-        data_criacao:
-          type: string
-          example: "2026-07-27 11:35:00"
         data_expiracao:
           type: string
           example: "2026-07-28 11:35:00"

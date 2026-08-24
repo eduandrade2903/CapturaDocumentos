@@ -58,25 +58,20 @@ class CollectionRequestRestService extends AdiantiRecordService
             case 'GET':
                 if (!empty($param['token_unico'])) {
                     return $this->getByTokenUnico($param['token_unico']);
-                } elseif (!empty($param['id'])) {
-                    //return $this->getCollectionrequestdocumentoById($param);
                 } else {
-                    //return $this->getCollectionrequestdocumento($param);
+                    return $this->loadAll($param);
                 }
-                break;
-            case 'POST':
-                return $this->create($param);
                 break;
             case 'PUT':
-                return $this->store($param);
+                return $this->update($param);
                 break;
             case 'DELETE':
-                if (!empty($param['id'])) {
+                if (!empty($param['token_unico'])) {
                     return $this->delete($param);
-                } else {
-                    return $this->deleteAll($param);
                 }
                 break;
+            default:
+                throw new Exception('Método não permitido.');
         }
     }
 
@@ -112,6 +107,33 @@ class CollectionRequestRestService extends AdiantiRecordService
         }
     }
 
+    public function update($param)
+    {
+        try {
+            $dados = $param['data'];
+            
+            TTransaction::open('data');
+            $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
+
+            $collectionRequest->status = $dados['status'];
+            $collectionRequest->store();
+
+            TTransaction::close();
+            http_response_code(200);
+            return [
+                'status' => 'success',
+                'message' => 'Solicitação de coleta atualizada com sucesso',
+                'data' => $collectionRequest->toArray()
+            ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(400);
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
 
     public function getById($param)
     {

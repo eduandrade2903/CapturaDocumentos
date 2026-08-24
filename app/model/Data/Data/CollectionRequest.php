@@ -69,16 +69,19 @@ class CollectionRequest extends TRecord
 
     public static function registra($clienteId, $processoId, $status = 'pendente')
     {
-        $coleta = new self();
-        $coleta->cliente_id = $clienteId;
-        $coleta->processo_id = $processoId;
-        $coleta->status = $status;
-
-        $token = $coleta->geraToken();
-        $coleta->store();
-        return [
-            'model'       => $coleta,
-            'token_limpo' => $token
-        ];
+        try {
+            $coleta = new self();
+            $coleta->cliente_id = $clienteId;
+            $coleta->processo_id = $processoId;
+            $coleta->status = $status;
+            $coleta->geraToken();
+            $coleta->store();
+            return [
+                'model'       => $coleta,
+                'token_limpo' => $coleta->token_unico
+            ];
+        } catch (Exception $e) {
+            throw new Exception('Erro ao registrar coleta: ' . $e->getMessage());
+        }
     }
 }

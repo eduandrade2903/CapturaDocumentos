@@ -26,14 +26,18 @@ class CollectionRequestDocumento extends TRecord
      */
     public static function criaCollectionDocumento($requestId, array $tipoDocumentoId)
     {
-
-        foreach ($tipoDocumentoId as $tipoDocumento) {
-            $colletionRequestDocumentos = new self();
-            $colletionRequestDocumentos->collection_request_id = $requestId;
-            $colletionRequestDocumentos->tipo_documento_id = $tipoDocumento;
-            $colletionRequestDocumentos->status = 'pendente';
-            $colletionRequestDocumentos->data_criacao = date('Y-m-d H:i:s');
-            $colletionRequestDocumentos->store();
+        try {
+            foreach ($tipoDocumentoId as $tipoDocumento) 
+            {
+                $colletionRequestDocumentos = new self();
+                $colletionRequestDocumentos->collection_request_id = $requestId;
+                $colletionRequestDocumentos->tipo_documento_id = $tipoDocumento;
+                $colletionRequestDocumentos->status = 'pendente';
+                $colletionRequestDocumentos->data_criacao = date('Y-m-d H:i:s');
+                $colletionRequestDocumentos->store();
+            }
+        } catch (Exception $e) {
+            throw new Exception('Erro ao criar collection de documentos: ' . $e->getMessage());
         }
     }
 }

@@ -9,7 +9,6 @@ class ProcessoRestService extends AdiantiRecordService
     const DATABASE      = 'data';
     const ACTIVE_RECORD = 'Processo';
     const ATTRIBUTES    = ['id', 'nome_completo', 'cpf', 'email', 'telefone'];
-    // const REST_KEY      = 'public';
 
     protected string $API_KEY;
 
@@ -34,7 +33,6 @@ class ProcessoRestService extends AdiantiRecordService
             }
         }
 
-
         switch ($method) {
             case 'GET':
                 if (!empty($param['id'])) {
@@ -49,13 +47,12 @@ class ProcessoRestService extends AdiantiRecordService
             case 'PUT':
                 return $this->update($param);
                 break;
-            case 'DELETE':
-                if (!empty($param['id'])) {
-                    return $this->delete($param);
-                } else {
-                    return $this->deleteAll($param);
-                }
-                break;
+            default:
+                http_response_code(405);
+                return [
+                    'status' => 'error',
+                    'message' => 'Método não permitido.'
+                ];
         }
     }
 
@@ -65,18 +62,23 @@ class ProcessoRestService extends AdiantiRecordService
         try {
             TTransaction::open('data');
             $cliente = Cliente::getClienteByApiKey($this->API_KEY);
-            $cliente->isClienteExistente($cliente->id); // Verifica se a cliente existe antes de criar o usuário
+
+            if (empty($request['data']['tipos_documentos'])) {
+                TTransaction::close();
+                http_response_code(400);
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhum tipo de documento foi informado para o usuário.'
+                ];
+            }
+
             $processo = new Processo();
             $processo->fromArray($request['data'] ?? []);
             $processo->store(); // Chama o método verifica() para validar os campos obrigatórios
 
-
-            $coletaRegistrada = CollectionRequest::registra($cliente->id ?? null, $processo->id ?? null, 'pendente');
-
-            if (empty($request['data']['tipos_documentos'])) throw new Exception("Nenhum tipo de documento foi informado para o usuário.");
+            $coletaRegistrada = CollectionRequest::registra($cliente->id, $processo->id, 'pendente');
 
             Collectionrequestdocumento::criaCollectionDocumento($coletaRegistrada['model']->id, $request['data']['tipos_documentos']);
-
 
             TTransaction::close();
             http_response_code(201);
@@ -88,28 +90,88 @@ class ProcessoRestService extends AdiantiRecordService
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
-            http_response_code(400);
+            http_response_code(500);
             return [
                 'status' => 'error',
-                'data'   => 'Erro ao criar usuário: ' . $e->getMessage()
+                'message'=> 'Erro ao criar usuário: ' . $e->getMessage()
             ];
         }
     }
 
+    public function loadAll($request)
+    {
+        try {
+            TTransaction::open('data');
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->load();
+
+            if(empty($collectionRequests)) {
+                TTransaction::close();
+                http_response_code(400);
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhuma solicitação foi encontrada.'
+                ];
+            }
+
+            $processos_ids = array_map(function ($item) {
+                return $item->processo_id;
+            }, $collectionRequests);
+
+            $processos = Processo::where('id', 'in', $processos_ids)->load();
+
+            $dados = array_map(function ($item) {
+                return $item->toArray();
+            }, $processos);
+
+            TTransaction::close();
+            return [
+                'status' => 'success',
+                'data' => $dados
+            ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(500);
+            return [
+                'status' => 'error',
+                'message'   => 'Erro ao consultar processo: ' . $e->getMessage()
+            ];
+        }
+    }
     public function getById($param)
     {
         try {
             TTransaction::open('data');
-            $processo = new Processo($param['id']);
-            TTransaction::close();
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first();
+            $processo = null;
 
+            if(isset($collectionRequests)){
+                $processo = Processo::find($param['id']);
+            }
+
+            if(empty($collectionRequests)) {
+                TTransaction::close();
+                http_response_code(400);
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhum processo encontrado.'
+                ];
+            }
+            
+            TTransaction::close();
+            http_response_code(200);
             return [
                 'status' => 'success',
                 'data' => $processo->toArray()
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
-            throw new Exception('Erro ao buscar usuário: ' . $e->getMessage());
+            http_response_code(500);
+            return [
+                'status' => 'error',
+                'message'   => 'Erro ao consultar processo: ' . $e->getMessage()
+            ];
         }
     }
 
@@ -117,13 +179,34 @@ class ProcessoRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $processo = Processo::isProcessoExistente($param['id']); // Verifica se o usuário existe antes de atualizar
-            $processo->fromArray($param['data'] ?? []);
-            $processo->store();
+            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first() ? true : false;
+
+            if($collectionRequests) {
+                $processo = new Processo($param['id']);
+                $processo->fromArray($param['data']);
+                $processo->store();
+            } else {
+                TTransaction::close();
+                http_response_code(400);
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhum processo encontrado.'
+                ];
+            }
             TTransaction::close();
+            http_response_code(200);
+            return [
+                'status' => 'success',
+                'data' => $processo->toArray()
+            ];            
         } catch (Exception $e) {
             TTransaction::rollback();
-            throw new Exception('Erro ao atualizar usuário: ' . $e->getMessage());
+            http_response_code(500);
+            return [
+                'status' => 'error',
+                'message'   => 'Erro ao atualizar processo: ' . $e->getMessage()
+            ];
         }
     }
 }

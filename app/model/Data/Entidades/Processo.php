@@ -25,17 +25,6 @@ class Processo extends TRecord
         return $collection;
     }
 
-    public function verifica()
-    {
-        if (empty($this->nome_completo) || empty($this->num_documento)) {
-            return false;
-        }
-        if (Processo::where('num_documento', '=', $this->num_documento)->first()) {
-            throw new Exception("Número do documento já cadastrado no sistema.");
-        }
-        return true;
-    }
-
     public static function isProcessoExistente($id)
     {
         $existe = Processo::where('id', '=', $id)->first();
@@ -44,13 +33,5 @@ class Processo extends TRecord
         } else {
             return $existe;
         }
-    }
-
-    public function store()
-    {
-        if (!$this->verifica()) {
-            throw new Exception("Campos obrigatórios não preenchidos.");
-        }
-        parent::store();
     }
 }
