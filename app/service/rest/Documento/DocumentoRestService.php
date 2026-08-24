@@ -149,12 +149,7 @@ class DocumentoRestService extends AdiantiRecordService
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
-        
-
-            $nomeUsuarioBruto = Processo::where('id', '=', $collectionRequest->processo_id)->first()->nome_completo ?? 'usuario_padrao';
-            $nomeUsuario = $this->limparNomeS3($nomeUsuarioBruto);
-
-            // 4. Verificar expiração
+                                // 4. Verificar expiração
             if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta expirada.');
@@ -198,9 +193,9 @@ class DocumentoRestService extends AdiantiRecordService
 
                 // Salvar o arquivo no disco
                 if (isset($fileItem['tmp_name']) && file_exists($fileItem['tmp_name'])) {
-                    $destinationPath = $this->savePhysicalFile($fileItem, $requestId, $tipoId, $destDir, $nomeUsuario);
+                    $destinationPath = $this->savePhysicalFile($fileItem, $requestId, $tipoId, $destDir);
                 } elseif (!empty($fileItem['base64'])) {
-                    $destinationPath = $this->saveBase64File($fileItem['base64'], $requestId, $tipoId, $destDir, $nomeUsuario);
+                    $destinationPath = $this->saveBase64File($fileItem['base64'], $requestId, $tipoId, $destDir);
                 } else {
                     http_response_code(400);
                     throw new Exception("Arquivo inválido para o tipo de documento {$tipoId}.");
@@ -360,16 +355,17 @@ class DocumentoRestService extends AdiantiRecordService
     /**
      * Salva um arquivo vindo de upload físico em disco e DEPOIS joga no S3
      */
-    private function savePhysicalFile(array $fileInfo, int $requestId, int $tipoDocumentoId, string $destDir, string $nomeUsuario): string
+    private function savePhysicalFile(array $fileInfo, int $requestId, int $tipoDocumentoId, string $destDir): string
     {
         $originalName = $fileInfo['name'] ?? 'file';
         $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         if (empty($extension)) {
             $extension = 'bin';
         }
+        $nomeDocumento = TiposDocumentos::where('id', '=', $tipoDocumentoId)->first()->nome ?? 'documento';
 
         // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Monta o nome local
-        $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . strtolower($extension);
+        $filename = $nomeDocumento  . '_' . uniqid() . '.' . strtolower($extension);
         $absolutePath = $destDir . '/' . $filename;
 
         // 2. MANTIDO O SEU CÓDIGO ORIGINAL: Salva fisicamente na pasta tmp/ do projeto
@@ -384,7 +380,7 @@ class DocumentoRestService extends AdiantiRecordService
         }
 
         // 3. A MÁGICA DA AWS: Agora que está seguro no seu disco, mandamos para o S3
-        $s3Url = $this->enviarParaAwsS3($absolutePath, $tipoDocumentoId, $nomeUsuario, strtolower($extension));
+        $s3Url = AwsService::uploadFile(collectionRequest::where('id', '=', $requestId)->first()->token_unico, $filename, $absolutePath);
 
         // 4. LIMPEZA: Remove o arquivo da sua pasta local após sucesso na AWS para não lotar seu servidor
         unlink($absolutePath);
@@ -396,11 +392,13 @@ class DocumentoRestService extends AdiantiRecordService
     /**
      * Salva um arquivo codificado em Base64 em disco e DEPOIS joga no S3
      */
-    private function saveBase64File(string $base64String, int $requestId, int $tipoDocumentoId, string $destDir, string $nomeUsuario): string
+    private function saveBase64File(string $base64String, int $requestId, int $tipoDocumentoId, string $destDir): string
     {
         $mimeType = null;
         $extension = 'jpg';
         $fileData = $base64String;
+
+        $token_unico = collectionRequest::where('id', '=', $requestId)->first()->token_unico;
 
         // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Validação de mime-types
         if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
@@ -437,7 +435,7 @@ class DocumentoRestService extends AdiantiRecordService
         }
 
         // 4. A MÁGICA DA AWS: Envia o arquivo que acabou de ser criado para a nuvem
-        $s3Url = $this->enviarParaAwsS3($absolutePath, $tipoDocumentoId, $nomeUsuario, $extension);
+        $s3Url = AwsService::uploadFile($token_unico, $filename, $absolutePath);
 
         // 5. LIMPEZA: Apaga o rastro do servidor local
         unlink($absolutePath);
@@ -449,49 +447,7 @@ class DocumentoRestService extends AdiantiRecordService
     /**
      * Método central que faz a comunicação com o Bucket S3
      */
-    private function enviarParaAwsS3(string $caminhoArquivoLocal, int $tipoId, string $nomeUsuario, string $extensao): string
-    {
-        // 1. Busca o nome do tipo do documento no banco
-        $tipoDoc = TiposDocumentos::find($tipoId);
-        $nomeTipoBruto = $tipoDoc ? $tipoDoc->nome : 'documento';
-
-        $tokenUnico = 
-
-        // Usamos a função que você já colocou lá no final do arquivo
-        $nomeTipo = $this->limparNomeS3($nomeTipoBruto);
-
-        // 2. Monta o nome exato solicitado: Tipo_documento_nome_usuario_UNIQID
-        $uniqid = uniqid();
-        $nomeArquivoS3 = "{$nomeTipo}_{$nomeUsuario}." . strtolower($extensao);
-
-        // 3. Monta a estrutura de pastas no Bucket
-        $caminhoS3 = "documentos/{}/{$nomeArquivoS3}";
-
-        // 4. Instancia o cliente da AWS (Lembre-se de rodar composer require aws/aws-sdk-php)
-        $s3 = new \Aws\S3\S3Client([
-            'version'     => 'latest',
-            'region'      => $_ENV['AWS_DEFAULT_REGION'], // Altere para a região do seu bucket
-            'credentials' => [
-                'key'    => $_ENV['AWS_ACCESS_KEY_ID'],
-                'secret' => $_ENV['AWS_SECRET_ACCESS_KEY'],
-            ]
-        ]);
-
-        $bucket = $_ENV['AWS_BUCKET_NAME'];
-
-        try {
-            $result = $s3->putObject([
-                'Bucket'     => $bucket,
-                'Key'        => $caminhoS3,
-                'SourceFile' => $caminhoArquivoLocal
-            ]);
-
-            // Retorna a URL completa da AWS
-            return $result['ObjectURL'];
-        } catch (Exception $e) {
-            throw new Exception("Falha ao enviar arquivo para AWS S3: " . $e->getMessage());
-        }
-    }
+    
     
 
     /**
