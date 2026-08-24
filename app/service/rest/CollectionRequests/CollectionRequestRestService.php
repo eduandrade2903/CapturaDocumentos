@@ -116,6 +116,7 @@ class CollectionRequestRestService extends AdiantiRecordService
             $collectionRequest = CollectionRequest::getByToken($dados['token_unico']);
 
             $collectionRequest->status = $dados['status'];
+            $collectionRequest->data_expiracao = $dados['data_expiracao'];
             $collectionRequest->store();
 
             TTransaction::close();
