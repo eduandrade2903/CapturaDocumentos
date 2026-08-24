@@ -61,7 +61,8 @@ class CollectionRequest extends TRecord
 
     public function geraToken()
     {
-        $this->token_unico = bin2hex(random_bytes(8));
+        $token = bin2hex(random_bytes(8));
+        $this->token_unico = hash('sha256', $token);
         $this->data_criacao = date('Y-m-d H:i:s');
         $this->data_expiracao = date('Y-m-d H:i:s', strtotime('+1 day')); // Token válido por 1 dia
     }

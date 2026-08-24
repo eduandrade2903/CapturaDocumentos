@@ -1,6 +1,6 @@
 <?php
 // Permite o acesso de qualquer origem. Se quiser restringir, troque '*' por 'http://localhost:4200'
-header("Access-Control-Allow-Origin: http://localhost:4200");
+header("Access-Control-Allow-Origin: *");
 //header("Access-Control-Allow-Origin: http://localhost:8080/*");
 //header("Access-Control-Allow-Origin: http://localhost:3000");
 

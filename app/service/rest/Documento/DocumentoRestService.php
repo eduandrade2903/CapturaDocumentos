@@ -149,8 +149,7 @@ class DocumentoRestService extends AdiantiRecordService
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
-
-            // 4. Verificar expiração
+                                // 4. Verificar expiração
             if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta expirada.');
@@ -353,6 +352,9 @@ class DocumentoRestService extends AdiantiRecordService
     /**
      * Salva um arquivo vindo de upload físico em disco
      */
+    /**
+     * Salva um arquivo vindo de upload físico em disco e DEPOIS joga no S3
+     */
     private function savePhysicalFile(array $fileInfo, int $requestId, int $tipoDocumentoId, string $destDir): string
     {
         $originalName = $fileInfo['name'] ?? 'file';
@@ -360,11 +362,13 @@ class DocumentoRestService extends AdiantiRecordService
         if (empty($extension)) {
             $extension = 'bin';
         }
+        $nomeDocumento = TiposDocumentos::where('id', '=', $tipoDocumentoId)->first()->nome ?? 'documento';
 
-        $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . strtolower($extension);
-        $destinationPath = 'tmp/' . $filename;
+        // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Monta o nome local
+        $filename = $nomeDocumento  . '_' . uniqid() . '.' . strtolower($extension);
         $absolutePath = $destDir . '/' . $filename;
 
+        // 2. MANTIDO O SEU CÓDIGO ORIGINAL: Salva fisicamente na pasta tmp/ do projeto
         if (is_uploaded_file($fileInfo['tmp_name'])) {
             if (!move_uploaded_file($fileInfo['tmp_name'], $absolutePath)) {
                 throw new Exception("Falha ao mover arquivo enviado para o servidor.");
@@ -375,11 +379,18 @@ class DocumentoRestService extends AdiantiRecordService
             }
         }
 
-        return $destinationPath;
+        // 3. A MÁGICA DA AWS: Agora que está seguro no seu disco, mandamos para o S3
+        $s3Url = AwsService::uploadFile(collectionRequest::where('id', '=', $requestId)->first()->token_unico, $filename, $absolutePath);
+
+        // 4. LIMPEZA: Remove o arquivo da sua pasta local após sucesso na AWS para não lotar seu servidor
+        unlink($absolutePath);
+
+        // Retorna a URL pública da AWS para ser salva no banco
+        return $s3Url;
     }
 
     /**
-     * Salva um arquivo codificado em Base64 em disco
+     * Salva um arquivo codificado em Base64 em disco e DEPOIS joga no S3
      */
     private function saveBase64File(string $base64String, int $requestId, int $tipoDocumentoId, string $destDir): string
     {
@@ -387,6 +398,9 @@ class DocumentoRestService extends AdiantiRecordService
         $extension = 'jpg';
         $fileData = $base64String;
 
+        $token_unico = collectionRequest::where('id', '=', $requestId)->first()->token_unico;
+
+        // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Validação de mime-types
         if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
             $mimeType = $matches[1];
             $fileData = $matches[2];
@@ -411,16 +425,30 @@ class DocumentoRestService extends AdiantiRecordService
             throw new Exception("Falha ao decodificar o arquivo base64 para o tipo de documento {$tipoDocumentoId}.");
         }
 
+        // 2. MANTIDO O SEU CÓDIGO ORIGINAL: Monta o nome e caminho exato que você criou
         $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . $extension;
-        $destinationPath = 'tmp/' . $filename;
         $absolutePath = $destDir . '/' . $filename;
 
+        // 3. MANTIDO O SEU CÓDIGO ORIGINAL: Escreve no disco local
         if (file_put_contents($absolutePath, $decodedData) === false) {
             throw new Exception("Falha ao salvar o arquivo decodificado no servidor.");
         }
 
-        return $destinationPath;
+        // 4. A MÁGICA DA AWS: Envia o arquivo que acabou de ser criado para a nuvem
+        $s3Url = AwsService::uploadFile($token_unico, $filename, $absolutePath);
+
+        // 5. LIMPEZA: Apaga o rastro do servidor local
+        unlink($absolutePath);
+
+        // Retorna a URL da AWS
+        return $s3Url;
     }
+
+    /**
+     * Método central que faz a comunicação com o Bucket S3
+     */
+    
+    
 
     /**
      * Recebe a imagem e o tipo do documento para ser analizado pela IA.
@@ -480,5 +508,18 @@ class DocumentoRestService extends AdiantiRecordService
                 'message' => 'ERRO NO SERIVDOR: ' . $e->getMessage()
             ];
         }
+    }
+
+    private function limparNomeS3(string $string) {
+        $string = preg_replace('/[áàãâä]/ui', 'a', $string);
+        $string = preg_replace('/[éèêë]/ui', 'e', $string);
+        $string = preg_replace('/[íìîï]/ui', 'i', $string);
+        $string = preg_replace('/[óòõôö]/ui', 'o', $string);
+        $string = preg_replace('/[úùûü]/ui', 'u', $string);
+        $string = preg_replace('/[ç]/ui', 'c', $string);
+        $string = preg_replace('/[^a-z0-9]/i', '_', $string); // Troca tudo que não for letra/numero por _
+        $string = preg_replace('/_+/', '_', $string); // Remove sublinhados duplicados
+
+        return trim(strtolower($string), '_');
     }
 }
