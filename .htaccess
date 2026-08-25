@@ -199,7 +199,7 @@ RewriteRule ^collection/([A-Za-z0-9-]*)$ rest.php?class=CollectionRequestRestSer
 
 RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=handle&%{QUERY_STRING} [NC]
 
-; RewriteRule ^collectionDocumento$ rest.php?class=CollectionrequestdocumentoRestService&method=handle&%{QUERY_STRING} [NC]
+# RewriteRule ^collectionDocumento$ rest.php?class=CollectionrequestdocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 
 RewriteRule ^documento$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^documento/([A-Za-z0-9]*)$ rest.php?class=DocumentoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
