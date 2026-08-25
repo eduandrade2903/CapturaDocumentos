@@ -760,97 +760,97 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /collectionDocumento:
-    get:
-      tags:
-        - CollectionRequestDocumento
-      summary: Consultar Documentos Requeridos da Coleta
-      description: Retorna os tipos de documentos requeridos para uma solicitação de coleta por ID (`tipos_documentos`) ou por `token`.
-      parameters:
-        - name: tipos_documentos
-          in: query
-          required: false
-          description: ID da solicitação de coleta (`CollectionRequest ID`)
-          schema:
-            type: integer
-            example: 18
-        - name: token
-          in: query
-          required: false
-          description: Token único da solicitação de coleta
-          schema:
-            type: string
-            example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-      responses:
-        '200':
-          description: Lista de documentos exigidos retornada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CollectionRequestDocumento'
-        '400':
-          description: Parâmetro não informado ou solicitação não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  # /collectionDocumento:
+  #   get:
+  #     tags:
+  #       - CollectionRequestDocumento
+  #     summary: Consultar Documentos Requeridos da Coleta
+  #     description: Retorna os tipos de documentos requeridos para uma solicitação de coleta por ID (`tipos_documentos`) ou por `token`.
+  #     parameters:
+  #       - name: tipos_documentos
+  #         in: query
+  #         required: false
+  #         description: ID da solicitação de coleta (`CollectionRequest ID`)
+  #         schema:
+  #           type: integer
+  #           example: 18
+  #       - name: token
+  #         in: query
+  #         required: false
+  #         description: Token único da solicitação de coleta
+  #         schema:
+  #           type: string
+  #           example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  #     responses:
+  #       '200':
+  #         description: Lista de documentos exigidos retornada com sucesso
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 status:
+  #                   type: string
+  #                   example: success
+  #                 data:
+  #                   type: array
+  #                   items:
+  #                     $ref: '#/components/schemas/CollectionRequestDocumento'
+  #       '400':
+  #         description: Parâmetro não informado ou solicitação não encontrada
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ErrorResponse'
 
-    post:
-      tags:
-        - CollectionRequestDocumento
-      summary: Vincular Novo Documento à Solicitação
-      description: Associa um tipo de documento específico a uma solicitação de coleta existente.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - data
-              properties:
-                data:
-                  type: object
-                  required:
-                    - collection_request_id
-                    - tipo_documento_id
-                  properties:
-                    collection_request_id:
-                      type: integer
-                      example: 18
-                    tipo_documento_id:
-                      type: integer
-                      example: 1
-      responses:
-        '201':
-          description: Documento vinculado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  message:
-                    type: string
-                    example: Documento da solicitação de coleta criado com sucesso
-                  data:
-                    $ref: '#/components/schemas/CollectionRequestDocumento'
-        '400':
-          description: Erro ao vincular documento
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  #   post:
+  #     tags:
+  #       - CollectionRequestDocumento
+  #     summary: Vincular Novo Documento à Solicitação
+  #     description: Associa um tipo de documento específico a uma solicitação de coleta existente.
+  #     requestBody:
+  #       required: true
+  #       content:
+  #         application/json:
+  #           schema:
+  #             type: object
+  #             required:
+  #               - data
+  #             properties:
+  #               data:
+  #                 type: object
+  #                 required:
+  #                   - collection_request_id
+  #                   - tipo_documento_id
+  #                 properties:
+  #                   collection_request_id:
+  #                     type: integer
+  #                     example: 18
+  #                   tipo_documento_id:
+  #                     type: integer
+  #                     example: 1
+  #     responses:
+  #       '201':
+  #         description: Documento vinculado com sucesso
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 status:
+  #                   type: string
+  #                   example: success
+  #                 message:
+  #                   type: string
+  #                   example: Documento da solicitação de coleta criado com sucesso
+  #                 data:
+  #                   $ref: '#/components/schemas/CollectionRequestDocumento'
+  #       '400':
+  #         description: Erro ao vincular documento
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ErrorResponse'
 
   /tiposDocumentos:
     get:
