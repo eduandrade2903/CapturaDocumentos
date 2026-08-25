@@ -28,10 +28,7 @@ class DocumentoRestService extends AdiantiRecordService
             throw new Exception('Sem autorizacao.');
         }
 
-        
-        if (isset($param['ia']) && $param['ia'] == 'true') {
-            return $this->analizer($param);
-        }
+
 
         unset($param['class']);
         unset($param['method']);
@@ -120,10 +117,13 @@ class DocumentoRestService extends AdiantiRecordService
 
     /**
      * POST /documento
-     * Recebe arquivos do usuário (multipart/form-data ou base64) e grava na base/servidor.
+     * Fluxo unificado: recebe arquivo → analisa com IA → salva no S3 → persiste no banco.
+     * A análise acontece ANTES do upload S3, impedindo que documentos inválidos sejam salvos na nuvem.
      */
     public function create($param)
     {
+        $tempFiles = []; // Rastreia arquivos temporários para limpeza segura
+
         try {
             TTransaction::open('data');
 
@@ -141,7 +141,7 @@ class DocumentoRestService extends AdiantiRecordService
                 throw new Exception('Token único não fornecido.');
             }
 
-            // 3. Buscar CollectionRequest
+            // 3. Buscar CollectionRequest vinculada ao token e ao cliente
             $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
                 ->where('cliente_id', '=', $cliente->id)
                 ->first();
@@ -149,7 +149,8 @@ class DocumentoRestService extends AdiantiRecordService
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
-                                // 4. Verificar expiração
+
+            // 4. Verificar expiração
             if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta expirada.');
@@ -161,7 +162,7 @@ class DocumentoRestService extends AdiantiRecordService
             $reqDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $validTipoIds = array_map(fn($doc) => (int)$doc->tipo_documento_id, $reqDocs);
 
-            // 6. Pasta de destino local para os arquivos
+            // 6. Pasta de destino local para os arquivos temporários
             $destDir = getcwd() . '/tmp';
             if (!is_dir($destDir)) {
                 mkdir($destDir, 0777, true);
@@ -177,74 +178,117 @@ class DocumentoRestService extends AdiantiRecordService
 
             $savedDocs = [];
 
-            // 8. Processar e salvar cada arquivo
+            // 8. Processar cada arquivo: validar tipo → salvar tmp → analisar IA → upload S3 → banco
             foreach ($filesToProcess as $fileItem) {
-                $tipoId = (int) ($fileItem['tipo_documento_id'] ?? 0);
-                if ($tipoId <= 0) {
-                    http_response_code(400);
-                    throw new Exception('tipo_documento_id não fornecido para um dos arquivos.');
+                $localPath = null;
+
+                try {
+                    $tipoId = (int) ($fileItem['tipo_documento_id'] ?? 0);
+                    if ($tipoId <= 0) {
+                        http_response_code(400);
+                        throw new Exception('tipo_documento_id não fornecido para um dos arquivos.');
+                    }
+
+                    // 8a. Validação 422: O tipo de documento enviado deve corresponder aos exigidos
+                    if (!in_array($tipoId, $validTipoIds, true)) {
+                        http_response_code(422);
+                        throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em Collectionrequestdocumento.");
+                    }
+
+                    // 8b. Salvar arquivo em tmp/ (ainda NÃO vai para o S3)
+                    $tempResult = $this->moveToTemp($fileItem, $requestId, $tipoId, $destDir);
+                    $localPath = $tempResult['absolutePath'];
+                    $tempFiles[] = $localPath;
+
+                    // 8c. Analisar documento com IA (DocumentAnalyzerService)
+                    $fileForAnalysis = [
+                        'tmp_name' => $localPath,
+                        'type'     => $tempResult['mimeType'],
+                        'name'     => $tempResult['filename']
+                    ];
+                    $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($fileForAnalysis, $tipoId);
+
+                    // 8d. Avaliar resultado da análise
+                    if (!isset($resultadoAnalise['CODIGO']) || $resultadoAnalise['CODIGO'] === '404') {
+                        // Documento não corresponde ao tipo solicitado — NÃO salvar no S3
+                        $this->cleanupTempFile($localPath);
+                        $localPath = null;
+                        TTransaction::rollback();
+                        http_response_code(422);
+                        return [
+                            'status'          => 'fail',
+                            'message'         => 'Documento Incorreto.',
+                            'motivo_rejeicao' => $resultadoAnalise['motivo_rejeicao']
+                                ?? 'O documento enviado não corresponde ao tipo solicitado.'
+                        ];
+                    }
+
+                    if ($resultadoAnalise['CODIGO'] !== '200') {
+                        // Erro na análise (IA indisponível, erro de API, etc.)
+                        $this->cleanupTempFile($localPath);
+                        $localPath = null;
+                        TTransaction::rollback();
+                        http_response_code(500);
+                        return [
+                            'status'  => 'error',
+                            'message' => 'Erro na análise do documento.',
+                            'motivo_rejeicao' => $resultadoAnalise['ERRO'] ?? null
+                        ];
+                    }
+
+                    // 8e. IA APROVOU — Agora sim, upload para o S3
+                    $s3Url = $this->uploadToS3($tokenUnico, $tempResult['filename'], $localPath);
+
+                    // 8f. Limpeza do arquivo temporário após upload S3 bem-sucedido
+                    $this->cleanupTempFile($localPath);
+                    $localPath = null;
+
+                    // 8g. Criar ou atualizar registro em Documento
+                    $documento = Documento::where('collection_request_id', '=', $requestId)
+                        ->where('tipo_documento_id', '=', $tipoId)
+                        ->first();
+                    if (!$documento) {
+                        $documento = new Documento();
+                        $documento->collection_request_id = $requestId;
+                        $documento->tipo_documento_id = $tipoId;
+                    }
+
+                    $documento->storage_path = $s3Url;
+                    $documento->status = 'APROVADO';
+                    $documento->motivo_rejeicao = null;
+                    $documento->data_upload = date('Y-m-d H:i:s');
+                    $documento->store();
+
+                    // 8h. Atualizar status na tabela collection_request_documentos
+                    $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)
+                        ->where('tipo_documento_id', '=', $tipoId)
+                        ->first();
+                    if ($reqDoc) {
+                        $reqDoc->status = 'enviado';
+                        $reqDoc->store();
+                    }
+
+                    // 8i. Salvar dados extraídos pela IA (ExtractedData)
+                    $dadosExtraidos = $resultadoAnalise;
+                    unset($dadosExtraidos['CODIGO']);
+                    if (!empty($dadosExtraidos)) {
+                        $extratedData = new ExtractedData();
+                        $extratedData->collection_request_id = $requestId;
+                        $extratedData->payload_ocr = json_encode($dadosExtraidos);
+                        $extratedData->processado_em = date('Y-m-d H:i:s');
+                        $extratedData->store();
+                    }
+
+                    $savedDocs[] = $documento->toArray();
+
+                } catch (Exception $e) {
+                    // Cleanup do arquivo do loop atual em caso de erro
+                    $this->cleanupTempFile($localPath);
+                    throw $e;
                 }
-
-                // Validação 422: O tipo de documento enviado deve corresponder aos exigidos
-                if (!in_array($tipoId, $validTipoIds, true)) {
-                    http_response_code(422);
-                    throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em Collectionrequestdocumento.");
-                }
-
-                // Salvar o arquivo no disco
-                if (isset($fileItem['tmp_name']) && file_exists($fileItem['tmp_name'])) {
-                    $destinationPath = $this->savePhysicalFile($fileItem, $requestId, $tipoId, $destDir);
-                } elseif (!empty($fileItem['base64'])) {
-                    $destinationPath = $this->saveBase64File($fileItem['base64'], $requestId, $tipoId, $destDir);
-                } else {
-                    http_response_code(400);
-                    throw new Exception("Arquivo inválido para o tipo de documento {$tipoId}.");
-                }
-
-                // Criar ou atualizar registro em Documento
-                $documento = Documento::where('collection_request_id', '=', $requestId)
-                    ->where('tipo_documento_id', '=', $tipoId)
-                    ->first();
-                if (!$documento) {
-                    $documento = new Documento();
-                    $documento->collection_request_id = $requestId;
-                    $documento->tipo_documento_id = $tipoId;
-                }
-
-                $documento->storage_path = $destinationPath;
-                $documento->status = 'APROVADO';
-                $documento->motivo_rejeicao = null;
-                $documento->data_upload = date('Y-m-d H:i:s');
-                $documento->store();
-
-                // Atualizar status na tabela collection_request_documentos
-                $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)
-                    ->where('tipo_documento_id', '=', $tipoId)
-                    ->first();
-                if ($reqDoc) {
-                    $reqDoc->status = 'enviado';
-                    $reqDoc->store();
-                }
-
-                $savedDocs[] = $documento->toArray();
             }
 
-            // 9. Processar extracted_data (OCR) se fornecido
-            $extractedDataParam = $param['extracted_data'] ?? $_POST['extracted_data'] ?? $param['extrated_data'] ?? null;
-            if ($extractedDataParam) {
-                $payloadOcr = $extractedDataParam;
-                if (is_array($extractedDataParam) || is_object($extractedDataParam)) {
-                    $payloadOcr = json_encode($extractedDataParam);
-                }
-
-                $extratedData = new ExtractedData();
-                $extratedData->collection_request_id = $requestId;
-                $extratedData->payload_ocr = $payloadOcr;
-                $extratedData->processado_em = date('Y-m-d H:i:s');
-                $extratedData->store();
-            }
-
-            // 10. Atualizar status da CollectionRequest se todos os documento estiverem enviados
+            // 9. Atualizar status da CollectionRequest se todos os documentos estiverem enviados
             $allDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $allUploaded = true;
             foreach ($allDocs as $doc) {
@@ -263,49 +307,47 @@ class DocumentoRestService extends AdiantiRecordService
             http_response_code(201);
             return [
                 'status' => 'success',
-                'message' => 'Documento enviados e salvos com sucesso.',
+                'message' => 'Documento validado, salvo e enviado com sucesso.',
                 'data' => $savedDocs
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
+            // Cleanup de TODOS os arquivos temporários pendentes
+            foreach ($tempFiles as $tmpPath) {
+                $this->cleanupTempFile($tmpPath);
+            }
             throw $e;
         }
     }
 
     /**
-     * Normaliza e extrai os arquivos enviados via $_FILES (multipart/form-data) ou JSON base64
+     * Normaliza e extrai o arquivo enviado via $_FILES (multipart/form-data) ou JSON base64.
+     * Sempre é enviado um único arquivo por requisição em $_FILES['file'].
+     * O tipo_documento_id vem como campo separado no form-data.
      */
     private function extractUploadedFiles(array $param): array
     {
         $filesToProcess = [];
 
-        // A. Processar multipart/form-data via $_FILES['documento']
-        if (!empty($_FILES['documento'])) {
-            $uploaded = $_FILES['documento'];
-            if (isset($uploaded['name']) && is_array($uploaded['name'])) {
-                foreach ($uploaded['name'] as $tipoId => $name) {
-                    if (empty($name)) {
-                        continue;
-                    }
-                    $tmpName = $uploaded['tmp_name'][$tipoId] ?? null;
-                    $error = $uploaded['error'][$tipoId] ?? UPLOAD_ERR_NO_FILE;
+        // A. Processar arquivo único via $_FILES['file'] (multipart/form-data)
+        if (!empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+            $uploaded = $_FILES['file'];
+            $tipoId = $param['tipo_documento_id'] ?? $_POST['tipo_documento_id'] ?? null;
 
-                    if ($error === UPLOAD_ERR_OK && $tmpName && file_exists($tmpName)) {
-                        $filesToProcess[] = [
-                            'tipo_documento_id' => $tipoId,
-                            'name' => $name,
-                            'tmp_name' => $tmpName,
-                            'type' => $uploaded['type'][$tipoId] ?? null
-                        ];
-                    }
-                }
+            if ($uploaded['tmp_name'] && file_exists($uploaded['tmp_name'])) {
+                $filesToProcess[] = [
+                    'tipo_documento_id' => $tipoId,
+                    'name'              => $uploaded['name'],
+                    'tmp_name'          => $uploaded['tmp_name'],
+                    'type'              => $uploaded['type'] ?? null
+                ];
             }
         }
 
-        // B. Processar chaves diretas em $_FILES (ex: $_FILES['documentos_1'] ou $_FILES['1'])
+        // B. Fallback: Processar chaves diretas em $_FILES (ex: $_FILES['doc_1'] ou $_FILES['1'])
         if (empty($filesToProcess) && !empty($_FILES)) {
             foreach ($_FILES as $key => $fileInfo) {
-                if ($key === 'documento') {
+                if ($key === 'file' || $key === 'documento') {
                     continue;
                 }
                 $tipoId = null;
@@ -326,7 +368,7 @@ class DocumentoRestService extends AdiantiRecordService
             }
         }
 
-        // C. Processar payload JSON com array de arquivos em Base64 ($param['files'] ou $param['documento'])
+        // C. Fallback: Processar payload JSON com arquivo em Base64
         if (empty($filesToProcess)) {
             $base64Files = $param['files'] ?? $param['documento'] ?? null;
             if (is_array($base64Files)) {
@@ -350,165 +392,120 @@ class DocumentoRestService extends AdiantiRecordService
     }
 
     /**
-     * Salva um arquivo vindo de upload físico em disco
+     * Salva o arquivo recebido (multipart ou base64) em disco local (tmp/).
+     * NÃO faz upload para S3 — isso acontece separadamente, após análise da IA.
+     *
+     * @return array ['absolutePath' => string, 'filename' => string, 'mimeType' => string]
      */
-    /**
-     * Salva um arquivo vindo de upload físico em disco e DEPOIS joga no S3
-     */
-    private function savePhysicalFile(array $fileInfo, int $requestId, int $tipoDocumentoId, string $destDir): string
+    private function moveToTemp(array $fileItem, int $requestId, int $tipoDocumentoId, string $destDir): array
     {
-        $originalName = $fileInfo['name'] ?? 'file';
-        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-        if (empty($extension)) {
-            $extension = 'bin';
-        }
-        $nomeDocumento = TiposDocumentos::where('id', '=', $tipoDocumentoId)->first()->nome ?? 'documento';
-
-        // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Monta o nome local
-        $filename = $nomeDocumento  . '_' . uniqid() . '.' . strtolower($extension);
-        $absolutePath = $destDir . '/' . $filename;
-
-        // 2. MANTIDO O SEU CÓDIGO ORIGINAL: Salva fisicamente na pasta tmp/ do projeto
-        if (is_uploaded_file($fileInfo['tmp_name'])) {
-            if (!move_uploaded_file($fileInfo['tmp_name'], $absolutePath)) {
-                throw new Exception("Falha ao mover arquivo enviado para o servidor.");
+        // A. Upload via multipart/form-data (tmp_name presente)
+        if (isset($fileItem['tmp_name']) && file_exists($fileItem['tmp_name'])) {
+            $originalName = $fileItem['name'] ?? 'file';
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            if (empty($extension)) {
+                $extension = 'bin';
             }
-        } else {
-            if (!copy($fileInfo['tmp_name'], $absolutePath)) {
-                throw new Exception("Falha ao salvar arquivo no servidor.");
-            }
-        }
+            $nomeDocumento = TiposDocumentos::where('id', '=', $tipoDocumentoId)->first()->nome ?? 'documento';
 
-        // 3. A MÁGICA DA AWS: Agora que está seguro no seu disco, mandamos para o S3
-        $s3Url = AwsService::uploadFile(collectionRequest::where('id', '=', $requestId)->first()->token_unico, $filename, $absolutePath);
+            $filename = $nomeDocumento . '_' . uniqid() . '.' . strtolower($extension);
+            $absolutePath = $destDir . '/' . $filename;
 
-        // 4. LIMPEZA: Remove o arquivo da sua pasta local após sucesso na AWS para não lotar seu servidor
-        unlink($absolutePath);
-
-        // Retorna a URL pública da AWS para ser salva no banco
-        return $s3Url;
-    }
-
-    /**
-     * Salva um arquivo codificado em Base64 em disco e DEPOIS joga no S3
-     */
-    private function saveBase64File(string $base64String, int $requestId, int $tipoDocumentoId, string $destDir): string
-    {
-        $mimeType = null;
-        $extension = 'jpg';
-        $fileData = $base64String;
-
-        $token_unico = collectionRequest::where('id', '=', $requestId)->first()->token_unico;
-
-        // 1. MANTIDO O SEU CÓDIGO ORIGINAL: Validação de mime-types
-        if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
-            $mimeType = $matches[1];
-            $fileData = $matches[2];
-
-            $mimeTypes = [
-                'image/jpeg' => 'jpg',
-                'image/jpg' => 'jpg',
-                'image/png' => 'png',
-                'image/gif' => 'gif',
-                'application/pdf' => 'pdf',
-                'application/msword' => 'doc',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
-                'text/plain' => 'txt'
-            ];
-            if (isset($mimeTypes[$mimeType])) {
-                $extension = $mimeTypes[$mimeType];
-            }
-        }
-
-        $decodedData = base64_decode($fileData);
-        if ($decodedData === false) {
-            throw new Exception("Falha ao decodificar o arquivo base64 para o tipo de documento {$tipoDocumentoId}.");
-        }
-
-        // 2. MANTIDO O SEU CÓDIGO ORIGINAL: Monta o nome e caminho exato que você criou
-        $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . $extension;
-        $absolutePath = $destDir . '/' . $filename;
-
-        // 3. MANTIDO O SEU CÓDIGO ORIGINAL: Escreve no disco local
-        if (file_put_contents($absolutePath, $decodedData) === false) {
-            throw new Exception("Falha ao salvar o arquivo decodificado no servidor.");
-        }
-
-        // 4. A MÁGICA DA AWS: Envia o arquivo que acabou de ser criado para a nuvem
-        $s3Url = AwsService::uploadFile($token_unico, $filename, $absolutePath);
-
-        // 5. LIMPEZA: Apaga o rastro do servidor local
-        unlink($absolutePath);
-
-        // Retorna a URL da AWS
-        return $s3Url;
-    }
-
-    /**
-     * Método central que faz a comunicação com o Bucket S3
-     */
-    
-    
-
-    /**
-     * Recebe a imagem e o tipo do documento para ser analizado pela IA.
-     */
-    private function analizer($param)
-    {
-        try {
-            // Verifica se o arquivo e o ID foram enviados
-            if (empty($_FILES['file']) || empty($_POST['tipo_documento_id'])) {
-                throw new Exception("Arquivo ou tipo de documento ausente.");
-            }
-
-            $file = $_FILES['file'];
-            $tipoDocumentoId = (int) $_POST['tipo_documento_id'];
-
-            // Opcional: Validar se é uma imagem ou PDF antes de mandar pra IA
-
-            // Aciona nossa Service
-            $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($file, $tipoDocumentoId);
-
-            if ($resultadoAnalise['CODIGO'] === '200') {
-                // Sucesso: A IA confirmou que é o documento certo
-                // Aqui você pode salvar o arquivo em disco/S3 e gravar no banco
-
-                // Remove o código do array para deixar só os dados extraídos, se preferir
-                unset($resultadoAnalise['CODIGO']);
-
-                http_response_code(201);
-                return [
-                    'status' => 'success',
-                    'message' => 'Documento validado com sucesso!',
-                    'dados_extraidos' => $resultadoAnalise
-                ];
-                // echo json_encode([
-                //     'status' => 'success', 
-                //     'message' => 'Documento validado com sucesso!',
-                //     'dados_extraidos' => $resultadoAnalise
-                // ]);
-            } elseif ($resultadoAnalise['CODIGO'] === '404') {
-                http_response_code(422);
-                return [
-                    'status' => 'fail',
-                    'message' => 'Documento Incorreto.',
-                    'motivo_rejeicao' => $resultadoAnalise['CODIGO']
-                ];
+            if (is_uploaded_file($fileItem['tmp_name'])) {
+                if (!move_uploaded_file($fileItem['tmp_name'], $absolutePath)) {
+                    throw new Exception("Falha ao mover arquivo enviado para o servidor.");
+                }
             } else {
-                return [
-                    'status' => 'error',
-                    'message' => 'Erro interno.',
-                    'motivo_rejeicao' => $resultadoAnalise['ERRO']
-                ];
+                if (!copy($fileItem['tmp_name'], $absolutePath)) {
+                    throw new Exception("Falha ao salvar arquivo no servidor.");
+                }
             }
-        } catch (Exception $e) {
-            http_response_code(500);
+
+            $mimeType = $fileItem['type'] ?? mime_content_type($absolutePath) ?: 'application/octet-stream';
+
             return [
-                'status' => 'error',
-                'message' => 'ERRO NO SERIVDOR: ' . $e->getMessage()
+                'absolutePath' => $absolutePath,
+                'filename'     => $filename,
+                'mimeType'     => $mimeType
             ];
         }
+
+        // B. Upload via Base64
+        if (!empty($fileItem['base64'])) {
+            $base64String = $fileItem['base64'];
+            $mimeType = 'image/jpeg';
+            $extension = 'jpg';
+            $fileData = $base64String;
+
+            if (preg_match('/^data:([^;]+);base64,(.*)$/s', $base64String, $matches)) {
+                $mimeType = $matches[1];
+                $fileData = $matches[2];
+
+                $mimeTypes = [
+                    'image/jpeg' => 'jpg',
+                    'image/jpg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'application/pdf' => 'pdf',
+                    'application/msword' => 'doc',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+                    'text/plain' => 'txt'
+                ];
+                if (isset($mimeTypes[$mimeType])) {
+                    $extension = $mimeTypes[$mimeType];
+                }
+            }
+
+            $decodedData = base64_decode($fileData);
+            if ($decodedData === false) {
+                throw new Exception("Falha ao decodificar o arquivo base64 para o tipo de documento {$tipoDocumentoId}.");
+            }
+
+            $filename = 'doc_' . $requestId . '_' . $tipoDocumentoId . '_' . time() . '_' . uniqid() . '.' . $extension;
+            $absolutePath = $destDir . '/' . $filename;
+
+            if (file_put_contents($absolutePath, $decodedData) === false) {
+                throw new Exception("Falha ao salvar o arquivo decodificado no servidor.");
+            }
+
+            return [
+                'absolutePath' => $absolutePath,
+                'filename'     => $filename,
+                'mimeType'     => $mimeType
+            ];
+        }
+
+        throw new Exception("Arquivo inválido para o tipo de documento {$tipoDocumentoId}.");
     }
+
+    /**
+     * Faz o upload de um arquivo local para o S3 via AwsService.
+     *
+     * @return string URL do objeto no S3
+     */
+    private function uploadToS3(string $tokenUnico, string $filename, string $absolutePath): string
+    {
+        return AwsService::uploadFile($tokenUnico, $filename, $absolutePath);
+    }
+
+    /**
+     * Remove um arquivo temporário de forma segura.
+     * Verifica existência antes de tentar remover, evitando erros em caminhos já limpos.
+     */
+    private function cleanupTempFile(?string $path): void
+    {
+        if ($path && file_exists($path)) {
+            @unlink($path);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // [DEPRECATED] Método analizer() removido.
+    // A lógica de análise com DocumentAnalyzerService::analisarDocumento()
+    // foi integrada diretamente ao create() (passo 8c), eliminando a
+    // necessidade da rota separada /documentosAnalise e do parâmetro ?ia=true.
+    // Referência do código original preservada no histórico de versionamento.
+    // ─────────────────────────────────────────────────────────────────────────
 
     private function limparNomeS3(string $string) {
         $string = preg_replace('/[áàãâä]/ui', 'a', $string);
