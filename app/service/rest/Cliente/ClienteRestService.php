@@ -36,7 +36,12 @@ class ClienteRestService extends AdiantiRecordService
 
             switch ($method) {
                 case 'GET':
-                    return $this->getByKey($param);
+                    if(!$this->API_KEY ){
+                        return $this->getByKey($param);;
+                    }else {
+                        return $this->getAll($param);
+                    }
+                    
                     break;
                 case 'POST':
                     return $this->create($param);
@@ -188,6 +193,29 @@ class ClienteRestService extends AdiantiRecordService
 
             http_response_code(200); // Set HTTP status code to 200 OK
             return ['cliente' => $cliente->toArray()];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(404); // Set HTTP status code to 404 Not Found
+            return ['message' => $e->getMessage()];
+        }
+    }
+
+    public function getAll(array $request): array
+    {
+        try {
+            TTransaction::open('data');
+            $clientes = Cliente::all();
+            TTransaction::close();
+
+            $clientesArray = [];
+            foreach ($clientes as $cliente) {
+                unset($cliente->id);
+                //unset($cliente->api_key);
+                $clientesArray[] = $cliente->toArray();
+            }
+
+            http_response_code(200); // Set HTTP status code to 200 OK
+            return ['clientes' => $clientesArray];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(404); // Set HTTP status code to 404 Not Found
