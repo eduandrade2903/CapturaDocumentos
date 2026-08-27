@@ -204,6 +204,8 @@ RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=h
 RewriteRule ^documento$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^documento/([A-Za-z0-9]*)$ rest.php?class=DocumentoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
+RewriteRule ^perfil$ rest.php?class=PerfilRestService&method=getInfo%{QUERY_STRING} [NC]
+
 # [DEPRECATED] Rota de análise separada removida — análise integrada ao POST /documento
 # RewriteRule ^documentosAnalise$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 

@@ -26,8 +26,8 @@ class ProcessoRestService extends AdiantiRecordService
         TTransaction::open('data');
 
         // 1. Tenta identificar o cliente pela API Key (Integração de sistemas externos)
-        if (!empty($api_key)) {
-            $this->cliente_logado = Cliente::getClienteByApiKey($api_key);
+        if (!empty($this->API_KEY)) {
+            $this->cliente_logado = Cliente::getClienteByApiKey($this->API_KEY);
         }
         // 2. Se não tem API Key, tenta identificar pelo Token JWT (Dashboard Angular)
         elseif (!empty($userid)) {
