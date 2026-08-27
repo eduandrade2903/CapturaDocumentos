@@ -19,4 +19,14 @@ class Documento extends TRecord
         parent::addAttribute('motivo_rejeicao');
         parent::addAttribute('data_upload');
     }
+
+    public function get_collection_request()
+    {
+        return new CollectionRequest($this->collection_request_id);
+    }
+
+    public function get_tipo_documento()
+    {
+        return new TiposDocumentos($this->tipo_documento_id);
+    }
 }

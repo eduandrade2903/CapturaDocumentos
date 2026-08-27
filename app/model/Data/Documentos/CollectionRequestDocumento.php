@@ -40,4 +40,26 @@ class CollectionRequestDocumento extends TRecord
             throw new Exception('Erro ao criar collection de documentos: ' . $e->getMessage());
         }
     }
+
+    public function get_documento()
+    {
+        try {
+            $documento = Documento::where('collection_request_id', '=', $this->collection_request_id)
+                                  ->where('tipo_documento_id', '=', $this->tipo_documento_id)
+                                  ->first();
+            return $documento;
+        } catch (Exception $e) {
+            throw new Exception('Erro ao buscar documento: ' . $e->getMessage());
+        }
+    }
+
+    public function get_collection_request()
+    {
+        return new CollectionRequest($this->collection_request_id);
+    }
+
+    public function get_tipo_documento()
+    {
+        return new TiposDocumentos($this->tipo_documento_id);
+    }
 }

@@ -2,6 +2,7 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Control\TWindow;
 use Adianti\Database\TTransaction;
 use Adianti\Registry\TSession;
 use Adianti\Validator\TRequiredValidator;
@@ -102,9 +103,11 @@ class ProcessoPage extends TPage
         // define row actions
         $action1 = new TDataGridAction([$this, 'onEditCurtain'],   ['key' => '{id}']);
         $action2 = new TDataGridAction([$this, 'onDelete'], ['key' => '{id}']);
+        $action3 = new TDataGridAction(['DocumentoWindow', 'onReload'], ['key' => '{id}']);
 
         $this->datagrid->addAction($action1, 'Edit',   'far:edit blue');
         $this->datagrid->addAction($action2, 'Delete', 'far:trash-alt red');
+        $this->datagrid->addAction($action3, 'Documentos', 'far:file blue');
 
         // create the datagrid model
         $this->datagrid->createModel();
@@ -117,8 +120,6 @@ class ProcessoPage extends TPage
         //$vbox->add($this->form);
 
         $vbox->add($panel = TPanelGroup::pack('', $this->datagrid));
-
-
 
         // search box
         $input_search = new TEntry('input_search');
@@ -200,9 +201,6 @@ class ProcessoPage extends TPage
         }
     }
 
-    /**
-     *
-     */
     public static function onEditCurtain($param = null)
     {
         try {
@@ -225,5 +223,12 @@ class ProcessoPage extends TPage
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
         }
+    }
+
+    public function onShowDocs($param)
+    {
+        $window = new TWindow('Documentos do Processo ' . $param['id']);
+        $window->setSize('50%', '50%');
+        $window->show();
     }
 }
