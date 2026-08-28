@@ -197,7 +197,6 @@ class ProcessoPage extends TPage
             $link = 'http://localhost:3000/public/' . $param['token_unico'];
             
             TScript::create("__adianti_copy_to_clipboard('{$link}');");
-            //TToast::show("success", "Link copiado para a área de transferência", "bottomCenter", "far:check-circle");
         }catch(Exception $e){
             new TMessage('error', $e->getMessage());
         }
@@ -207,23 +206,16 @@ class ProcessoPage extends TPage
     {
         
         try {
-            TTransaction::open('data');
-            $collection = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
-
-            if($collection->data_expiracao < (new DateTime())) 
-            {
-                $collection->status = 'PENDENTE';
-                $collection->data_expiracao = (new DateTime())->modify('+2 days')->format('Y-m-d H:i:s');
-                $collection->store();
-                TTransaction::close();
-                TToast::show('success', $collection->data_expiracao);
+            $service = new CollectionRequestService($param['token_unico']);
+            $result = $service->renovarCollection();
+            
+            if($result){
+                TToast::show('success', 'Token renovado com sucesso');
             } else {
-                TTransaction::close();
                 TToast::show('info', 'Token já válido');
             }
             
         }catch(Exception $e){
-            TTransaction::rollback();
             new TMessage('error', $e->getMessage());
         }
        
