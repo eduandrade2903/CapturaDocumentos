@@ -4,53 +4,45 @@ use Adianti\Control\TAction;
 use Adianti\Control\TPage;
 use Adianti\Control\TWindow;
 use Adianti\Database\TTransaction;
-use Adianti\Registry\TSession;
 use Adianti\Validator\TRequiredValidator;
+use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\TPanelGroup;
 use Adianti\Widget\Container\TVBox;
 use Adianti\Widget\Datagrid\TDataGrid;
 use Adianti\Widget\Datagrid\TDataGridAction;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Dialog\TMessage;
+use Adianti\Widget\Dialog\TToast;
 use Adianti\Widget\Form\TButton;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
+use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBMultiCombo;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
-/**
- * StandardFormDataGridCurtainView
- */
 class ProcessoPage extends TPage
 {
-    protected $form;      // form
-    protected $datagrid;  // datagrid
+    protected $form;
+    protected $datagrid;
     protected $loaded;
-    protected $pageNavigation;  // pagination component
+    protected $pageNavigation;
 
-    // trait with onSave, onEdit, onDelete, onReload, onSearch...
     use Adianti\Base\AdiantiStandardFormListTrait;
 
-    /**
-     * Class constructor
-     * Creates the page, the form and the listing
-     */
     public function __construct()
     {
         parent::__construct();
 
-        $this->setDatabase('data'); // define the database
-        $this->setActiveRecord('Processo'); // define the Active Record
-        $this->setDefaultOrder('id', 'asc'); // define the default order
-        $this->setLimit(-1); // turn off limit for datagrid
+        $this->setDatabase('data'); 
+        $this->setActiveRecord('Processo'); 
+        $this->setDefaultOrder('id', 'asc'); 
+        $this->setLimit(-1); 
 
-        // create the form
         $this->form = new BootstrapFormBuilder('form_processo');
         $this->form->setFormTitle('Controle de Processo');
 
-        // create the form fields
         $id     = new TEntry('id');
         $nome   = new TEntry('nome_completo');
         $cpf    = new TEntry('num_documento');
@@ -61,8 +53,7 @@ class ProcessoPage extends TPage
         $cpf->setMask('000.000.000-00');
         $telefone->setMask('(00) 00000-0000');
 
-        // add the form fields
-        $this->form->addFields([new TLabel('ID')],    [$id]);
+        $this->form->addFields([new TLabel('ID')], [$id]);
         $this->form->addFields([new TLabel('Name', 'red')],  [$nome]);
         $this->form->addFields([new TLabel('Num. Documento', 'red')], [$cpf]);
         $this->form->addFields([new TLabel('Email', 'red')], [$email]);
@@ -74,65 +65,63 @@ class ProcessoPage extends TPage
         $email->addValidation('Email', new TRequiredValidator);
         $telefone->addValidation('Telefone', new TRequiredValidator);
 
-        // define the form actions
         $this->form->addAction('Save', new TAction([$this, 'onSave']), 'fa:save green');
 
-        // make id not editable
         $id->setEditable(FALSE);
 
-        // create the datagrid
         $this->datagrid = new BootstrapDatagridWrapper(new TDataGrid);
         $this->datagrid->width = '100%';
-
-        // add the columns        
+     
         $col_id    = new TDataGridColumn('id', 'Id', 'right', '10%');
-        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '50%');
+        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '30%');
         $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '20%');
+        $token     = new TDataGridColumn('collection->token_unico', 'Link', 'left', '10%');
         $status    = new TDataGridColumn('collection->status', 'Status', 'left', '20%');
-
+        
+        //Cria um botão dropdown com as ações
+        $token->setTransformer(function($value, $object, $row) {
+            $dropdown = new TDropDown('Ações', 'fa:list');
+            $dropdown->addAction('Copiar Link', new TAction(['ProcessoPage', 'copiaLinkCollection'], ['token_unico' => $value]), 'fa:copy blue');
+            $dropdown->addAction('Renovar Link', new TAction(['ProcessoPage', 'renovarTokenCollection'], ['token_unico' => $value]), 'fa:refresh blue');
+            $dropdown->addAction('Conferir Documentos', new TAction(['DocumentoWindow', 'onReload'], ['id' => $object->id]), 'fa:eye blue');
+            
+            return $dropdown;
+        });
 
         $this->datagrid->addColumn($col_id);
         $this->datagrid->addColumn($col_nome);
         $this->datagrid->addColumn($cpf);
+        $this->datagrid->addColumn($token);
         $this->datagrid->addColumn($status);
 
         $col_id->setAction(new TAction([$this, 'onReload']),   ['order' => 'id']);
         $col_nome->setAction(new TAction([$this, 'onReload']), ['order' => 'nome']);
-        $status->setAction(new TAction([$this, 'onReload']), ['order' => 'CollectionStatus']);
+        $status->setAction(new TAction([$this, 'onReload']),   ['order' => 'CollectionStatus']);
 
-        // define row actions
-        $action1 = new TDataGridAction([$this, 'onEditCurtain'],   ['key' => '{id}']);
-        $action2 = new TDataGridAction([$this, 'onDelete'], ['key' => '{id}']);
-        $action3 = new TDataGridAction(['DocumentoWindow', 'onReload'], ['key' => '{id}']);
+        $action1 = new TDataGridAction([$this, 'onEditCurtain'], ['key' => '{id}']);
+        $action2 = new TDataGridAction([$this, 'onDelete'],      ['key' => '{id}']);
 
         $this->datagrid->addAction($action1, 'Edit',   'far:edit blue');
         $this->datagrid->addAction($action2, 'Delete', 'far:trash-alt red');
-        $this->datagrid->addAction($action3, 'Documentos', 'far:file blue');
 
-        // create the datagrid model
         $this->datagrid->createModel();
+        $this->datagrid->disableDefaultClick();
 
-        // wrap objects inside a table
         $vbox = new TVBox;
         $vbox->style = 'width: 100%';
         $vbox->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
 
-        //$vbox->add($this->form);
-
         $vbox->add($panel = TPanelGroup::pack('', $this->datagrid));
 
-        // search box
         $input_search = new TEntry('input_search');
         $input_search->placeholder = _t('Search');
         $input_search->setSize('100%');
 
-        // enable fuse search by column name
         $this->datagrid->enableSearch($input_search, 'id, name');
         $panel->addHeaderWidget($input_search);
 
         $panel->addHeaderActionLink(_t('New'), new TAction([$this, 'onEditCurtain']), 'fa:plus green');
 
-        // pack the table inside the page
         parent::add($vbox);
     }
 
@@ -201,6 +190,44 @@ class ProcessoPage extends TPage
         }
     }
 
+    public static function copiaLinkCollection($param)
+    {
+        try{
+            $link = 'http://localhost:3000/public/' . $param['token_unico'];
+            
+            TScript::create("__adianti_copy_to_clipboard('{$link}');");
+            //TToast::show("success", "Link copiado para a área de transferência", "bottomCenter", "far:check-circle");
+        }catch(Exception $e){
+            new TMessage('error', $e->getMessage());
+        }
+    }
+
+    public static function renovarTokenCollection($param)
+    {
+        
+        try {
+            TTransaction::open('data');
+            $collection = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+
+            if($collection->data_expiracao < (new DateTime())) 
+            {
+                $collection->status = 'PENDENTE';
+                $collection->data_expiracao = (new DateTime())->modify('+2 days')->format('Y-m-d H:i:s');
+                $collection->store();
+                TTransaction::close();
+                TToast::show('success', $collection->data_expiracao);
+            } else {
+                TTransaction::close();
+                TToast::show('info', 'Token já válido');
+            }
+            
+        }catch(Exception $e){
+            TTransaction::rollback();
+            new TMessage('error', $e->getMessage());
+        }
+       
+    }
+    
     public static function onEditCurtain($param = null)
     {
         try {
@@ -224,11 +251,5 @@ class ProcessoPage extends TPage
             new TMessage('error', $e->getMessage());
         }
     }
-
-    public function onShowDocs($param)
-    {
-        $window = new TWindow('Documentos do Processo ' . $param['id']);
-        $window->setSize('50%', '50%');
-        $window->show();
-    }
+    
 }
