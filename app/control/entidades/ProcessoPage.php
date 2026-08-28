@@ -72,10 +72,11 @@ class ProcessoPage extends TPage
         $this->datagrid->width = '100%';
      
         $col_id    = new TDataGridColumn('id', 'Id', 'right', '10%');
-        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '30%');
-        $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '20%');
-        $token     = new TDataGridColumn('collection->token_unico', 'Link', 'left', '10%');
-        $status    = new TDataGridColumn('collection->status', 'Status', 'left', '20%');
+        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '25%');
+        $col_email = new TDataGridColumn('email', 'Email', 'left', '15%');
+        $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '10%');
+        $token     = new TDataGridColumn('collection->token_unico', 'Link', 'center', '10%');
+        $status    = new TDataGridColumn('collection->status', 'Status', 'left', '30%');
         
         //Cria um botão dropdown com as ações
         $token->setTransformer(function($value, $object, $row) {
@@ -89,6 +90,7 @@ class ProcessoPage extends TPage
 
         $this->datagrid->addColumn($col_id);
         $this->datagrid->addColumn($col_nome);
+        $this->datagrid->addColumn($col_email);
         $this->datagrid->addColumn($cpf);
         $this->datagrid->addColumn($token);
         $this->datagrid->addColumn($status);
