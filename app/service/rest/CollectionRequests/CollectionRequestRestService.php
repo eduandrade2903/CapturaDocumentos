@@ -183,7 +183,7 @@ class CollectionRequestRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::where('token_unico', '=', $param)->where('cliente_id', '=', $this->cliente->id)->first();
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $param)->first();
 
             if(!isset($collectionRequest)) {
                 TTransaction::close();

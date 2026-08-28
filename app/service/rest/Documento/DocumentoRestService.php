@@ -127,8 +127,10 @@ class DocumentoRestService extends AdiantiRecordService
         try {
             TTransaction::open('data');
 
-            // 1. Validar cliente via API_KEY
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $collection = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+               
+            //1. Validar cliente via API_KEY
+            $cliente = Cliente::where('id', '=', $collection->cliente_id)->first();
             if (empty($cliente->id)) {
                 http_response_code(403);
                 throw new Exception('Sem autorizacao.');
@@ -141,22 +143,19 @@ class DocumentoRestService extends AdiantiRecordService
                 throw new Exception('Token único não fornecido.');
             }
 
-            // 3. Buscar CollectionRequest vinculada ao token e ao cliente
-            $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
-                ->where('cliente_id', '=', $cliente->id)
-                ->first();
-            if (!$collectionRequest) {
+            
+            if (!$collection) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
 
             // 4. Verificar expiração
-            if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
+            if (!empty($collection->data_expiracao) && date('Y-m-d H:i:s') > $collection->data_expiracao) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta expirada.');
             }
 
-            $requestId = (int) $collectionRequest->id;
+            $requestId = (int) $collection->id;
 
             // 5. Carregar tipos de documento permitidos (exigidos) para validação (422)
             $reqDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
@@ -264,7 +263,7 @@ class DocumentoRestService extends AdiantiRecordService
                         ->where('tipo_documento_id', '=', $tipoId)
                         ->first();
                     if ($reqDoc) {
-                        $reqDoc->status = 'enviado';
+                        $reqDoc->status = 'ENVIADO';
                         $reqDoc->store();
                     }
 
@@ -291,15 +290,16 @@ class DocumentoRestService extends AdiantiRecordService
             // 9. Atualizar status da CollectionRequest se todos os documentos estiverem enviados
             $allDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $allUploaded = true;
+            
             foreach ($allDocs as $doc) {
-                if (($doc->status ?? 'pendente') !== 'enviado') {
+                if (($doc->status ?? 'PENDENTE') !== 'ENVIADO') {
                     $allUploaded = false;
                     break;
                 }
             }
             if ($allUploaded && !empty($allDocs)) {
-                $collectionRequest->status = 'enviado';
-                $collectionRequest->store();
+                $collection->status = 'CONCLUIDO';
+                $collection->store();
             }
 
             TTransaction::close();
