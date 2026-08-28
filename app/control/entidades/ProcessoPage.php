@@ -2,7 +2,6 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
-use Adianti\Control\TWindow;
 use Adianti\Database\TTransaction;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
@@ -251,5 +250,5 @@ class ProcessoPage extends TPage
             new TMessage('error', $e->getMessage());
         }
     }
-    
+
 }
