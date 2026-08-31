@@ -47,9 +47,12 @@ class DocumentoRestService extends AdiantiRecordService
                     return $this->loadAll($param);
                 }
             case 'POST':
-                if($param['action'] === 'recusar') {
+                if(isset($param['action']) && $param['action'] == 'recusar') {
                     return $this->recusar($param);
-                }else {
+                }else if(isset($param['action']) && $param['action'] == 'renovar_prazo') {
+                    return $this->renovaToken($param);
+                }    
+                else {
                     return $this->create($param);
                 }
             default:
@@ -542,6 +545,28 @@ class DocumentoRestService extends AdiantiRecordService
         exit;
     }
 
+    private function renovaToken($param) {
+
+        $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+
+        // Instancia a sua classe passando o token no construtor
+        $service = new CollectionRequestService($tokenUnico);
+        $renovou = $service->renovarCollection();
+
+        if ($renovou) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'O prazo estava expirado e foi renovado por mais 2 dias.'
+            ]);
+        } else {
+            // Retorna um alerta caso a data ainda não tenha vencido
+            echo json_encode([
+                'status' => 'info',
+                'message' => 'O prazo desta solicitação ainda está válido. Nenhuma alteração foi feita.'
+            ]);
+        }
+        exit;       
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // [DEPRECATED] Método analizer() removido.

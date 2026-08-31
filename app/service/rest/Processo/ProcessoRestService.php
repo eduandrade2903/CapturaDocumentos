@@ -150,6 +150,7 @@ class ProcessoRestService extends AdiantiRecordService
                 $arrayProcesso['status'] = $coletaRelacionada->status;
                 $arrayProcesso['data_criacao'] = $coletaRelacionada->data_criacao;
                 $arrayProcesso['token_unico'] = $coletaRelacionada->token_unico;
+                $arrayProcesso['data_expiracao'] = $coletaRelacionada->data_expiracao;
 
                 return $arrayProcesso;
             }, $processos);
