@@ -6,7 +6,9 @@ class CollectionRequestService
 {
     private string $token_unico;
 
-
+    /*
+    * Construtor
+    */
     public function __construct($token_unico = null)
     {
         if ($token_unico) {
@@ -14,7 +16,12 @@ class CollectionRequestService
         }
     }
 
-    public function buscarCollectionsCliente(string $id_cliente)
+    /*
+    * Busca todas as collections de um cliente
+    * @param string $id_cliente
+    * @return array<CollectionRequest>
+    */
+    public function buscarCollectionsCliente(string $id_cliente): array
     {
         try {
             TTransaction::open('data');
@@ -28,6 +35,10 @@ class CollectionRequestService
         }
     }
 
+    /*
+    * Renova a collection para status pendente e data de expiração para +2 dias se a data atual for maior que a data de expiração
+    * @return bool
+    */
     public function renovarCollection(): bool
     {
         try {
