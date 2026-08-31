@@ -49,7 +49,7 @@ class DocumentoWindow extends TWindow
         $col_status = new TDataGridColumn('status', 'Status', 'left');
         $col_data_criacao = new TDataGridColumn('data_criacao', 'Data Upload', 'left');
         $col_storage_path = new TDataGridColumn('storage_path', 'Documento', 'left');
-        $col_recusar = new TDataGridColumn('', 'Recusa', 'right');
+        $col_recusar = new TDataGridColumn('', 'Recusa', 'left');
 
         $col_recusar->setTransformer(function($value, $object, $row) {
             if ($object->status == 'ENVIADO') {
@@ -123,7 +123,7 @@ class DocumentoWindow extends TWindow
     {
 
         $documento = DocumentoService::obterDadosDocumento($param['tipo_documento_id'], $param['collection_request_id']);
-        
+
         $link = DocumentoService::visualizarDocumento($documento['token_unico'], $documento['nome_arquivo']);
 
         if (empty($link)) {
