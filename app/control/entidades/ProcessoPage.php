@@ -171,11 +171,12 @@ class ProcessoPage extends TPage
         try {
             TTransaction::open('data');
             $cliente_logada = $_SESSION['template']['userunitcustomcode'];
-            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_logada)->load();
+            $collectionService = new CollectionRequestService;
+            $collections = $collectionService->buscarCollectionsCliente($cliente_logada);
 
             $processo_ids = [];
-            if (!empty($collectionRequest)) {
-                foreach ($collectionRequest as $collection) {
+            if (!empty($collections)) {
+                foreach ($collections as $collection) {
                     $processo_ids[] = $collection->processo_id;
                 }
             }

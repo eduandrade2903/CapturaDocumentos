@@ -7,9 +7,11 @@ class CollectionRequestService
     private string $token_unico;
 
 
-    public function __construct($token_unico)
+    public function __construct($token_unico = null)
     {
-        $this->token_unico = $token_unico;
+        if ($token_unico) {
+            $this->token_unico = $token_unico;
+        }
     }
 
     public function buscarCollectionsCliente(string $id_cliente)
