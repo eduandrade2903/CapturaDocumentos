@@ -1,5 +1,6 @@
 <?php
 
+use Adianti\Database\TTransaction;
 
 class CollectionRequestService 
 {
@@ -9,6 +10,20 @@ class CollectionRequestService
     public function __construct($token_unico)
     {
         $this->token_unico = $token_unico;
+    }
+
+    public function buscarCollectionsCliente(string $id_cliente)
+    {
+        try {
+            TTransaction::open('data');
+            $collections = CollectionRequest::where('cliente_id', '=', $id_cliente)->load();
+            TTransaction::close();
+            
+            return $collections;
+        }catch(Exception $e){
+            TTransaction::rollback();
+            throw new Exception($e->getMessage());
+        }
     }
 
     public function renovarCollection(): bool
@@ -46,10 +61,4 @@ class CollectionRequestService
     }
 }
 
-
-
-
-
-
-}
 ?>
