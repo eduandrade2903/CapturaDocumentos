@@ -33,11 +33,25 @@ class DocumentoRestService extends AdiantiRecordService
         unset($param['class']);
         unset($param['method']);
 
-        return match ($method) {
-            'GET' => $this->loadAll($param),
-            'POST' => $this->create($param),
-            default => throw new Exception("Método HTTP {$method} não suportado.")
-        };
+        // return match ($method) {
+        //     'GET' => $this->loadAll($param),
+        //     'POST' => $this->create($param),
+        //     default => throw new Exception("Método HTTP {$method} não suportado.")
+        // };
+
+        switch ($method) {
+            case 'GET':
+                if($param['action'] === 'visualizar') {
+                    return $this->visualiza($param);
+                }else {
+
+                }
+                return $this->loadAll($param);
+            case 'POST':
+                return $this->create($param);
+            default:
+                throw new Exception("Método HTTP {$method} não suportado.");
+        }
     }
 
     /**
@@ -501,6 +515,18 @@ class DocumentoRestService extends AdiantiRecordService
             @unlink($path);
         }
     }
+
+    private function visualiza($param) {
+    $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+    $nomeArquivo = $param['nome_arquivo'] ?? throw new Exception("Arquivo não informado");
+
+    // DELEGA PARA A CAMADA DE SERVIÇO
+    $url = DocumentoService::visualizarDocumento($tokenUnico, $nomeArquivo);
+
+    echo json_encode(['status' => 'success', 'url' => $url]);
+    exit;
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // [DEPRECATED] Método analizer() removido.

@@ -5,7 +5,7 @@ use Adianti\Database\TTransaction;
 /**
  * Classe responsável por isolar as regras de negócio de Gestão de Documentos.
  */
-class GestaoService
+class DocumentoService
 {
     /**
      * Gera a URL temporária de visualização no S3
