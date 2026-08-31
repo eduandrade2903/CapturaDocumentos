@@ -66,4 +66,39 @@ class DocumentoService
             throw $e; // Repassa o erro para o RestService tratar
         }
     }
+
+    /** 
+    * Obtem o token_unico e nome do arquivo de um documento.
+    * @author Eduardo Guimarães
+    * @param string $tipo_documento_id
+    * @param string $collection_request_id
+    * @return array [documento_id, token_unico, nome_arquivo]
+    */
+    public static function obterDadosDocumento(string $tipo_documento_id, string $collection_request_id): array
+    {
+        try {
+            TTransaction::open('data');
+            $documento = Documento::where('tipo_documento_id', '=', $tipo_documento_id)->where('collection_request_id', '=', $collection_request_id)->first();
+            TTransaction::close();
+            
+            if (empty($documento->id)) {
+                throw new Exception("Documento não encontrado no banco de dados.");
+            }
+
+            $recorte = $_ENV['AWS_LINK'];
+            $caminho_nome = str_replace($recorte, '',$documento->storage_path );
+            $dados = explode('/', $caminho_nome);
+            $token = $dados[0];
+            $nome_arquivo = $dados[1];
+
+            return [
+                'documento_id' => $documento->id,
+                'token_unico' => $token,
+                'nome_arquivo' => $nome_arquivo
+            ];
+        }catch(Exception $e){
+            TTransaction::rollback();
+            throw $e;
+        }
+    }
 }
