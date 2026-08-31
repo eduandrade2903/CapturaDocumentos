@@ -2,6 +2,7 @@
 
 use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
+use Adianti\Registry\TSession;
 use Adianti\Service\AdiantiRecordService;
 
 class ProcessoRestService extends AdiantiRecordService
@@ -12,15 +13,34 @@ class ProcessoRestService extends AdiantiRecordService
 
     protected string $API_KEY;
 
+    protected $cliente_logado;
+
     public function handle($param)
     {
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
         $this->API_KEY = $headers['api_key'] ?? null;
 
-        if (is_null($this->API_KEY)) {
-            throw new Exception('Sem autorizacao.');
+        $userid = TSession::getValue('userid');
+
+        TTransaction::open('data');
+
+        // 1. Tenta identificar o cliente pela API Key (Integração de sistemas externos)
+        if (!empty($this->API_KEY)) {
+            $this->cliente_logado = Cliente::getClienteByApiKey($this->API_KEY);
         }
+        // 2. Se não tem API Key, tenta identificar pelo Token JWT (Dashboard Angular)
+        elseif (!empty($userid)) {
+            $this->cliente_logado = Cliente::where('system_user_id', '=', $userid)->first();
+        }
+
+        // Se nenhuma das duas formas encontrar um cliente, barra o acesso
+        if (empty($this->cliente_logado)) {
+            TTransaction::close();
+            throw new Exception('Sem autorização. Forneça uma API Key válida ou faça login no sistema.');
+        }
+
+        TTransaction::close();
 
         unset($param['class']);
         unset($param['method']);
@@ -61,7 +81,7 @@ class ProcessoRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $cliente = $this->cliente_logado;
 
             if (empty($request['data']['tipos_documentos'])) {
                 TTransaction::close();
@@ -102,47 +122,51 @@ class ProcessoRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+
+            // SUBSTITUÍDO: Usando o cliente já validado
+            $cliente = $this->cliente_logado;
+
             $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->load();
 
-            if(empty($collectionRequests)) {
+            if (empty($collectionRequests)) {
                 TTransaction::close();
-                http_response_code(400);
-                return [
-                    'status' => 'error',
-                    'message' => 'Nenhuma solicitação foi encontrada.'
-                ];
+                http_response_code(200);
+                return ['status' => 'success', 'data' => []]; // Retorna array vazio para o Angular
             }
 
-            $processos_ids = array_map(function ($item) {
-                return $item->processo_id;
-            }, $collectionRequests);
+            // Mesclando as informações de Processo e CollectionRequest
+            $coletasMap = [];
+            foreach ($collectionRequests as $coleta) {
+                $coletasMap[$coleta->processo_id] = $coleta;
+            }
 
+            $processos_ids = array_keys($coletasMap);
             $processos = Processo::where('id', 'in', $processos_ids)->load();
 
-            $dados = array_map(function ($item) {
-                return $item->toArray();
+            $dados = array_map(function ($item) use ($coletasMap) {
+                $arrayProcesso = $item->toArray();
+                $coletaRelacionada = $coletasMap[$item->id];
+
+                $arrayProcesso['status'] = $coletaRelacionada->status;
+                $arrayProcesso['data_criacao'] = $coletaRelacionada->data_criacao;
+                $arrayProcesso['token_unico'] = $coletaRelacionada->token_unico;
+
+                return $arrayProcesso;
             }, $processos);
 
             TTransaction::close();
-            return [
-                'status' => 'success',
-                'data' => $dados
-            ];
+            return ['status' => 'success', 'data' => $dados];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500);
-            return [
-                'status' => 'error',
-                'message'   => 'Erro ao consultar processo: ' . $e->getMessage()
-            ];
+            return ['status' => 'error', 'message'   => 'Erro ao consultar processo: ' . $e->getMessage()];
         }
     }
     public function getById($param)
     {
         try {
             TTransaction::open('data');
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $cliente = $this->cliente_logado;
             $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first();
             $processo = null;
 
@@ -179,7 +203,7 @@ class ProcessoRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
+            $cliente = $this->cliente_logado;
             $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first() ? true : false;
 
             if($collectionRequests) {

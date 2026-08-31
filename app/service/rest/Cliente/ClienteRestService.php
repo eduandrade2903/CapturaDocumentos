@@ -36,7 +36,7 @@ class ClienteRestService extends AdiantiRecordService
 
             switch ($method) {
                 case 'GET':
-                    if(!$this->API_KEY ){
+                    if(!empty($this->API_KEY) ){
                         return $this->getByKey($param);;
                     }else {
                         return $this->getAll($param);
@@ -222,4 +222,6 @@ class ClienteRestService extends AdiantiRecordService
             return ['message' => $e->getMessage()];
         }
     }
+
+
 }

@@ -12,6 +12,7 @@ class CollectionRequestRestService extends AdiantiRecordService
 
     protected string $API_KEY;
     protected Cliente $cliente;
+    protected $collectionRequest;
 
     /**
      * Método padrão para tratamento de requisições HTTP.
@@ -24,12 +25,14 @@ class CollectionRequestRestService extends AdiantiRecordService
         $headers = AdiantiCoreApplication::getHeaders();
         $this->API_KEY = $headers['api_key'] ?? null;
 
-        if (is_null($this->API_KEY)) {
-            throw new Exception('Sem autorizacao.');
-        }
-
         TTransaction::open('data');
-        $this->cliente = Cliente::getClienteByApiKey($this->API_KEY);
+
+        $this->collectionRequest = CollectionRequest::where('token_unico', '=', $param['token_unico'])->first();
+        if (!$this->collectionRequest) {
+            throw new Exception('Solicitação de coleta não encontrada.');
+        }
+        $this->cliente = Cliente::where('id', '=', $this->collectionRequest->cliente_id)->first();
+
         TTransaction::close();
         if (empty($this->cliente->id)) {
             throw new Exception('Sem autorizacao.');
@@ -183,7 +186,7 @@ class CollectionRequestRestService extends AdiantiRecordService
     {
         try {
             TTransaction::open('data');
-            $collectionRequest = CollectionRequest::where('token_unico', '=', $param)->where('cliente_id', '=', $this->cliente->id)->first();
+            $collectionRequest = CollectionRequest::where('token_unico', '=', $param)->first();
 
             if(!isset($collectionRequest)) {
                 TTransaction::close();
