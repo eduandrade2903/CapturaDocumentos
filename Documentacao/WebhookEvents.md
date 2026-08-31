@@ -1,8 +1,8 @@
-# 🔔 Documentação do Serviço REST - Eventos de Webhook (`WebhookEventsRestService`)
+# 🔔 Documentação do Serviço REST - Eventos de Webhook (`WebhookEventRestService`)
 
 [⬅️ Voltar ao Índice Principal](file:///Users/edutronicos/Projetos/capturaDocumentos/Documentacao/README.md)
 
-O serviço **Eventos de Webhook** (`WebhookEvents`) permite que as empresas parceiras consultem o histórico e o status de entrega dos eventos assíncronos disparados pelo sistema (ex: conclusão de captura de documentos, falhas ou atualizações de solicitações).
+O serviço **Eventos de Webhook** (`WebhookEvent`) permite que os clientes parceiros consultem o histórico e o status de entrega dos eventos assíncronos disparados pelo sistema (ex: conclusão de captura de documentos, falhas ou expirações).
 
 ---
 
@@ -10,21 +10,21 @@ O serviço **Eventos de Webhook** (`WebhookEvents`) permite que as empresas parc
 
 | Verbo HTTP  | Método              | Endpoint / URL    | Requer API Key?   | Descrição                              |
 | :---        | :---                | :---              | :---              | :---                                   |
-| `GET`       | `loadWebhookEvents` | `/webhook-events` | ✅ Sim (`Header`) | Lista os eventos de Webhook associados à empresa autenticada. |
+| `GET`       | `loadWebhookEvent`  | `/webhook-event`  | ✅ Sim (`Header`) | Lista os eventos de Webhook associados ao cliente autenticado. |
 
 ---
 
-## 🔍 Consultar Eventos de Webhook (`GET`)
+## 🔍 Consultar Eventos de Webhook (`GET /webhook-event`)
 
-Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada pela sua empresa.
+Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada pelo cliente.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/webhook-events`
+- **URL**: `https://seu-dominio.com.br/webhook-event`
 - **Verbo**: `GET`
 - **Cabeçalhos**:
   - `api_key: SUA_CHAVE_API_AQUI`
-  - `Authorization: Bas.. 76ast`
+  - `Authorization: Basic <REST_KEY>`
   - `Content-Type: application/json`
 
 ---
@@ -33,29 +33,26 @@ Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada 
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "data": [
-      {
-        "id": "101",
-        "empresa_id": "1",
-        "tipo_evento": "document.uploaded",
-        "payload": "{\"solicitacao_id\": 18, \"usuario_id\": 42, \"documento\": \"cnh.pdf\", \"status\": \"sucesso\"}",
-        "status_envio": "sucesso",
-        "tentativas": "1",
-        "criado_em": "2026-07-27 12:00:00"
-      },
-      {
-        "id": "102",
-        "empresa_id": "1",
-        "tipo_evento": "collection.expired",
-        "payload": "{\"solicitacao_id\": 15, \"motivo\": \"tempo_limite_excedido\"}",
-        "status_envio": "falha",
-        "tentativas": "3",
-        "criado_em": "2026-07-27 12:05:00"
-      }
-    ]
-  }
+  "data": [
+    {
+      "id": "101",
+      "cliente_id": "1",
+      "tipo_evento": "document.uploaded",
+      "payload": "{\"solicitacao_id\": 18, \"processo_id\": 42, \"documento\": \"cnh.pdf\", \"status\": \"sucesso\"}",
+      "status_envio": "sucesso",
+      "tentativas": "1",
+      "criado_em": "2026-07-27 12:00:00"
+    },
+    {
+      "id": "102",
+      "cliente_id": "1",
+      "tipo_evento": "collection.expired",
+      "payload": "{\"solicitacao_id\": 15, \"motivo\": \"tempo_limite_excedido\"}",
+      "status_envio": "falha",
+      "tentativas": "3",
+      "criado_em": "2026-07-27 12:05:00"
+    }
+  ]
 }
 ```
 
@@ -64,7 +61,7 @@ Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada 
 | Campo           | Tipo                  | Descrição                                                           |
 | :---            | :---                  | :---                                                                |
 | `id`            | `string` / `integer`  | Identificador único do evento de webhook.                           |
-| `empresa_id`    | `string` / `integer`  | ID da empresa destinatária.                                         |
+| `cliente_id`    | `string` / `integer`  | ID do cliente destinatário.                                         |
 | `tipo_evento`   | `string`              | Categoria/tipo do evento disparado (ex: `document.uploaded`).       |
 | `payload`       | `string` (JSON)       | Dados brutos enviados no corpo da requisição HTTP do Webhook.       |
 | `status_envio`  | `string`              | Status do envio (`sucesso`, `falha`, `pendente`).                   |
@@ -102,10 +99,10 @@ Retorna a lista completa de eventos disparados para a URL de Webhook cadastrada 
 ```python
 import requests
 
-url = "https://seu-dominio.com.br/restp.php?class=WebhookEventsRestService&method=handle"
+url = "https://seu-dominio.com.br/webhook-event"
 headers = {
-    "api_key": "SUA_CHAVE_API_AQUI"
-    "Authorization: Bas.. 76ast",
+    "api_key": "SUA_CHAVE_API_AQUI",
+    "Authorization": "Basic cmVzdF9rZXk6",
     "Content-Type": "application/json"
 }
 

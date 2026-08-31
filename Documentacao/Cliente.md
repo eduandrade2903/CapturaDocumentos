@@ -1,8 +1,8 @@
-# 🏢 Documentação do Serviço REST - Empresas (`EmpresasRestService`)
+# 🏢 Documentação do Serviço REST - Cliente (`ClienteRestService`)
 
 [⬅️ Voltar ao Índice Principal](file:///Users/edutronicos/Projetos/capturaDocumentos/Documentacao/README.md)
 
-O serviço **Empresas** é responsável pelo cadastro inicial da empresa parceira no sistema, emissão da chave de acesso (`api_key`), consulta aos dados cadastrais e atualização de informações (incluindo URL de Webhook).
+O serviço **Cliente** é responsável pelo cadastro inicial do cliente parceiro no sistema, emissão da chave de acesso (`api_key`), consulta aos dados cadastrais e atualização de informações (incluindo URL de Webhook).
 
 ---
 
@@ -10,25 +10,26 @@ O serviço **Empresas** é responsável pelo cadastro inicial da empresa parceir
 
 | Verbo HTTP | Método     | Endpoint / URL | Requer API Key?    | Descrição          |
 | :---       | :---       | :---           | :---               | :---               |
-| `POST`     | `create`   | `/empresas`    | ❌ Não             | Cadastra nova empresa e gera a `api_key`. |
-| `GET`      | `getByKey` | `/empresas`    | ✅ Sim (`Header`)  | Retorna os dados da empresa cadastrada. |
-| `PUT`      | `update`   | `/empresas`    | ✅ Sim (`Header`)  | Atualiza dados cadastrais da empresa.   |
+| `POST`     | `create`   | `/cliente`     | ❌ Não             | Cadastra novo cliente e envia a `api_key` por e-mail. |
+| `GET`      | `getByKey` | `/cliente`     | ✅ Sim (`Header`)  | Retorna os dados do cliente cadastrado. |
+| `PUT`      | `update`   | `/cliente`     | ✅ Sim (`Header`)  | Atualiza dados cadastrais do cliente.   |
+| `GET`      | `getById`  | `/cliente/{id}`| ✅ Sim (`Header`)  | Consulta dados de um cliente pelo ID.   |
 
 ---
 
-## 1. ➕ Cadastrar Empresa (`POST`)
+## 1. ➕ Cadastrar Cliente (`POST`)
 
-Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o e-mail de confirmação.
+Cria um novo cliente no sistema, cria o usuário de acesso ao painel e envia o e-mail de confirmação com a chave de API gerada.
 
 > [!IMPORTANT]
-> A chave de API (`api_key`) será retornada **apenas uma vez** na resposta do cadastro em texto claro. Certifique-se de salvá-la em local seguro.
+> A chave de API (`api_key`) gerada é enviada com segurança para o e-mail cadastrado. Guarde sua chave com cuidado, pois ela autentica as demais operações de negócio.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/empresas`
+- **URL**: `https://seu-dominio.com.br/cliente`
 - **Verbo**: `POST`
 - **Cabeçalhos**:
-  - `Authorization: Bas... a8079syd78...`
+  - `Authorization: Basic <REST_KEY>`
   - `Content-Type: application/json`
 
 ### Body (JSON)
@@ -50,8 +51,8 @@ Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o 
 
 | Campo          | Tipo     | Obrigatório?    | Descrição                                               |
 | :---           | :---     | :---            | :---                                                    |
-| `razao_social` | `string` | ✅ Sim          | Razão social completa da empresa.                       |
-| `cnpj`         | `string` | ✅ Sim          | CNPJ da empresa (com ou sem pontuação).                 |
+| `razao_social` | `string` | ✅ Sim          | Razão social completa da empresa/cliente.               |
+| `cnpj`         | `string` | ✅ Sim          | CNPJ do cliente (com ou sem pontuação).                 |
 | `nome_contato` | `string` | ✅ Sim          | Nome do responsável pelo contato.                       |
 | `email`        | `string` | ✅ Sim          | E-mail principal de contato e login de acesso.          |
 | `telefone`     | `string` | ❌ Não          | Telefone comercial para contato.                        |
@@ -62,39 +63,30 @@ Cria uma nova empresa no sistema, cria o usuário de acesso ao painel e envia o 
 ### Resposta de Sucesso (`201 Created`)
 
 ```json
-{
-  "status": "success",
-  "data": {
-    "message": "Empresa criada com sucesso",
-    "api_key": "4f9..."
-  }
-}
+[]
 ```
 
 ### Resposta de Erro (`400 Bad Request`)
 
 ```json
 {
-  "status": "error",
-  "data": {
-    "message": "Todos os campos são obrigatórios."
-  }
+  "message": "Todos os campos são obrigatórios."
 }
 ```
 
 ---
 
-## 2. 🔍 Consultar Dados da Empresa (`GET`)
+## 2. 🔍 Consultar Dados do Cliente (`GET`)
 
-Obtém as informações cadastrais da empresa associada à `api_key` enviada no cabeçalho.
+Obtém as informações cadastrais do cliente associado à `api_key` enviada no cabeçalho.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/empresas`
+- **URL**: `https://seu-dominio.com.br/cliente`
 - **Verbo**: `GET`
 - **Cabeçalhos**:
   - `Content-Type: application/json`
-  - `Authorization: Bas.. 98734huh...`
+  - `Authorization: Basic <REST_KEY>`
   - `api_key: SUA_CHAVE_API_AQUI`
 
 ---
@@ -103,18 +95,15 @@ Obtém as informações cadastrais da empresa associada à `api_key` enviada no 
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "empresa": {
-      "system_user_id": "15",
-      "razao_social": "Tech Inovações LTDA",
-      "cnpj": "12.345.678/0001-90",
-      "nome_contato": "Carlos Eduardo",
-      "email": "contato@techinovacoes.com.br",
-      "telefone": "(11) 98765-4321",
-      "webhook_url": "https://api.techinovacoes.com.br/webhooks/captura",
-      "data_cadastro": "2026-07-27 10:00:00"
-    }
+  "cliente": {
+    "system_user_id": "15",
+    "razao_social": "Tech Inovações LTDA",
+    "cnpj": "12345678000190",
+    "nome_contato": "Carlos Eduardo",
+    "email": "contato@techinovacoes.com.br",
+    "telefone": "11987654321",
+    "webhook_url": "https://api.techinovacoes.com.br/webhooks/captura",
+    "data_cadastro": "2026-07-27 10:00:00"
   }
 }
 ```
@@ -123,27 +112,24 @@ Obtém as informações cadastrais da empresa associada à `api_key` enviada no 
 
 ```json
 {
-  "status": "error",
-  "data": {
-    "message": "Chave de API invalida."
-  }
+  "message": "Chave de API invalida."
 }
 ```
 
 ---
 
-## 3. ✏️ Atualizar Empresa (`PUT`)
+## 3. ✏️ Atualizar Cliente (`PUT`)
 
-Atualiza as informações cadastrais da empresa associada à `api_key`.
+Atualiza as informações cadastrais do cliente associado à `api_key`.
 
 ### Requisição
 
-- **URL**: `https://seu-dominio.com.br/empresas`
+- **URL**: `https://seu-dominio.com.br/cliente`
 - **Verbo**: `PUT`
 - **Cabeçalhos**:
   - `api_key: SUA_CHAVE_API_AQUI`
   - `Content-Type: application/json`
-  - `Authorization: Bas.. 98734huh...`
+  - `Authorization: Basic <REST_KEY>`
 
 ### Body (JSON)
 
@@ -163,18 +149,15 @@ Atualiza as informações cadastrais da empresa associada à `api_key`.
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "empresa": {
-      "system_user_id": "15",
-      "razao_social": "Tech Inovações LTDA",
-      "cnpj": "12.345.678/0001-90",
-      "nome_contato": "Carlos Eduardo Silva",
-      "email": "contato@techinovacoes.com.br",
-      "telefone": "(11) 99999-8888",
-      "webhook_url": "https://nova-api.techinovacoes.com.br/webhooks",
-      "data_cadastro": "2026-07-27 10:00:00"
-    }
+  "cliente": {
+    "system_user_id": "15",
+    "razao_social": "Tech Inovações LTDA",
+    "cnpj": "12345678000190",
+    "nome_contato": "Carlos Eduardo Silva",
+    "email": "contato@techinovacoes.com.br",
+    "telefone": "11999998888",
+    "webhook_url": "https://nova-api.techinovacoes.com.br/webhooks",
+    "data_cadastro": "2026-07-27 10:00:00"
   }
 }
 ```
@@ -183,11 +166,12 @@ Atualiza as informações cadastrais da empresa associada à `api_key`.
 
 ## 💻 Exemplos de Código
 
-### Exemplo em cURL (Cadastro de Empresa)
+### Exemplo em cURL (Cadastro de Cliente)
 
 ```bash
-curl -X POST "https://seu-dominio.com.br/empresas" \
+curl -X POST "https://seu-dominio.com.br/cliente" \
      -H "Content-Type: application/json" \
+     -H "Authorization: Basic cmVzdF9rZXk6" \
      -d '{
            "data": {
              "razao_social": "Empresa Exemplo LTDA",
@@ -203,12 +187,12 @@ curl -X POST "https://seu-dominio.com.br/empresas" \
 ### Exemplo em JavaScript (Fetch - Consulta por API Key)
 
 ```javascript
-async function buscarDadosEmpresa(apiKey) {
-  const response = await fetch("https://seu-dominio.com.br/empresas", {
+async function buscarDadosCliente(apiKey) {
+  const response = await fetch("https://seu-dominio.com.br/cliente", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bas.. 98734huh...",
+      "Authorization": "Basic cmVzdF9rZXk6",
       "api_key": apiKey
     }
   });

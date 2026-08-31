@@ -87,11 +87,11 @@
         <menu>
             <menuitem label='Perfil'>
                 <icon></icon>
-                <action>EmpresasPage</action>
+                <action>ClientePage</action>
             </menuitem>
-            <menuitem label='Usuarios'>
+            <menuitem label='Processo'>
                 <icon></icon>
-                <action>UsuariosPage</action>
+                <action>ProcessoPage</action>
             </menuitem>
             <menuitem label='Common page 3'>
                 <icon></icon>

@@ -4,11 +4,11 @@ use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 use Adianti\Service\AdiantiRecordService;
 
-class WebhookEventsRestService extends AdiantiRecordService
+class WebhookEventRestService extends AdiantiRecordService
 {
     const DATABASE      = 'data';
-    const ACTIVE_RECORD = 'WebhookEvents';
-    const ATTRIBUTES    = ['id', 'empresa_id', 'tipo_evento', 'payload', 'status_envio', 'tentativas', 'criado_em'];
+    const ACTIVE_RECORD = 'WebhookEvent';
+    const ATTRIBUTES    = ['id', 'cliente_id', 'tipo_evento', 'payload', 'status_envio', 'tentativas', 'criado_em'];
 
     protected string $API_KEY;
 
@@ -17,33 +17,35 @@ class WebhookEventsRestService extends AdiantiRecordService
         $method = strtoupper($_SERVER['REQUEST_METHOD']);
         $headers = AdiantiCoreApplication::getHeaders();
         $this->API_KEY = $headers['api_key'] ?? null;
-        
-        if( is_null($this->API_KEY) ) { throw new Exception('Sem autorizacao.'); }
+
+        if (is_null($this->API_KEY)) {
+            throw new Exception('Sem autorizacao.');
+        }
 
         unset($param['class']);
         unset($param['method']);
-        
-        
-        switch( $method )
-        {
+
+
+        switch ($method) {
             case 'GET':
-                return $this->loadWebhookEvents($param);
+                return $this->loadWebhookEvent($param);
                 break;
         }
     }
 
-    private function loadWebhookEvents($param) {
-        try {            
+    private function loadWebhookEvent($param)
+    {
+        try {
             TTransaction::open('data');
-            $empresa = Empresas::where('api_key', '=', $this->API_KEY)->first();
+            $cliente = Cliente::where('api_key', '=', $this->API_KEY)->first();
 
-            if(is_null($empresa)) {
+            if (is_null($cliente)) {
                 http_response_code(403);
                 throw new Exception('Chave de API invalida.');
             }
 
-            $webhookEvents = WebhookEvents::getByEmpresaId($empresa->id);
-            if(empty($webhookEvents)) {
+            $webhookEvent = WebhookEvent::getByClienteId($cliente->id);
+            if (empty($webhookEvent)) {
                 http_response_code(404);
                 throw new Exception('Nenhum webhook encontrado.');
             }
@@ -51,7 +53,7 @@ class WebhookEventsRestService extends AdiantiRecordService
             TTransaction::close();
 
             http_response_code(200);
-            return [ 'data' => $webhookEvents ];
+            return ['data' => $webhookEvent];
         } catch (Exception $e) {
             TTransaction::rollback();
             throw new Exception($e->getMessage());
