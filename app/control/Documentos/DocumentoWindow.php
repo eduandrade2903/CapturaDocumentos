@@ -1,17 +1,13 @@
 <?php
 
 use Adianti\Control\TAction;
-use Adianti\Control\TPage;
 use Adianti\Control\TWindow;
 use Adianti\Core\AdiantiCoreApplication;
-use Adianti\Core\AdiantiCoreLoader;
 use Adianti\Database\TTransaction;
 use Adianti\Widget\Container\TPanelGroup;
 use Adianti\Widget\Datagrid\TDataGrid;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Dialog\TMessage;
-use Adianti\Widget\Form\TButton;
-use Adianti\Widget\Template\THtmlRenderer;
 use Adianti\Widget\Util\TActionLink;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 
@@ -77,7 +73,8 @@ class DocumentoWindow extends TWindow
                   
     }
 
-    public function onReload($param) {
+    public function onReload($param) 
+    {
         try 
         {
             TTransaction::open('data');
@@ -104,7 +101,8 @@ class DocumentoWindow extends TWindow
         }
     }
 
-    public static function onViewDocument($param){
+    public static function onViewDocument($param)
+    {
 
         TTransaction::open('data');
         $documento = Documento::where('tipo_documento_id', '=', $param['tipo_documento_id'])->where('collection_request_id', '=', $param['collection_request_id'])->first();
