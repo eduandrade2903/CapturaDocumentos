@@ -7,21 +7,23 @@ class GestaoDocumentosRestService
 {
     public function handle($param)
     {
+        header('Content-Type: application/json; charset=utf-8');
         try {
             $method = strtoupper($_SERVER['REQUEST_METHOD']);
             $action = $param['action'] ?? '';
 
+            
             // ==========================================
             // 1. GERAR URL DE VISUALIZAÇÃO
             // ==========================================
             if ($method === 'GET' && $action === 'visualizar') {
                 $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
                 $nomeArquivo = $param['nome_arquivo'] ?? throw new Exception("Arquivo não informado");
-
                 // Usa a sua classe AWS nativa para gerar o link temporário
                 $url = AwsService::getTemporaryUrl($tokenUnico, $nomeArquivo);
 
-                return ['status' => 'success', 'url' => $url];
+                echo json_encode(['status' => 'success', 'url' => $url]);
+                exit;
             }
 
             // ==========================================
@@ -30,29 +32,53 @@ class GestaoDocumentosRestService
             if ($method === 'POST' && $action === 'recusar') {
                 TTransaction::open('data');
 
-                $idDocumento = $param['id_documento'] ?? throw new Exception("ID do documento não informado");
+            
                 $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
-
-                // Instancia o documento do banco (ajuste 'Documento' para o nome exato da sua model)
+                $motivo = $param['motivo_rejeicao'] ?? throw new Exception("Motivo da rejeição não informado");
+                $idDocumento = $param['id_documento'] ?? throw new Exception("ID do documento não informado");
                 $documento = new Documento($idDocumento);
+             
 
                 if (empty($documento->id)) {
                     throw new Exception("Documento não encontrado no banco de dados.");
                 }
 
-                $nomeArquivo = $documento->arquivo; // Ajuste 'arquivo' para o nome da coluna que guarda o nome real do arquivo
+                $collectionRequestId = $documento->collection_request_id;
+                $tipoDocumentoId = $documento->tipo_documento_id;
 
-                // 1º: Tenta deletar fisicamente do S3 usando a sua classe
-                if (!empty($nomeArquivo)) {
-                    AwsService::deleteFile($tokenUnico, $nomeArquivo);
+                // Instancia o documento do banco (ajuste 'Documento' para o nome exato da sua model)
+                $nomeArquivoS3 = basename($documento->storage_path);
+                if(!empty($nomeArquivoS3)) {
+                    AwsService::deleteFile($tokenUnico, $nomeArquivoS3);
                 }
 
-                // 2º: Deleta do banco de dados para forçar o usuário a enviar novamente
-                $documento->delete();
+                $documento->storage_path = 'RECUSADO';
+                $documento->status = 'REJEITADO';
+                $documento->motivo_rejeicao = $motivo;
+                $documento->store();
+
+                $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $collectionRequestId)
+                    ->where('tipo_documento_id', '=', $tipoDocumentoId)
+                    ->first();
+
+                if($reqDoc) {
+                    $reqDoc->status = 'REJEITADO';
+                    $reqDoc->store();
+                };
+
+                $collection = new CollectionRequest($collectionRequestId);
+                if ($collection) {
+                    $collection->status = 'PENDENTE';
+                    $collection->store();
+                }
+              
+
+
 
                 TTransaction::close();
 
-                return ['status' => 'success', 'message' => 'Documento recusado. O candidato precisará reenviá-lo.'];
+                echo json_encode(['status' => 'success', 'message' => 'Documento recusado com sucesso.']);
+                exit;
             }
 
             throw new Exception("Ação não reconhecida.");
