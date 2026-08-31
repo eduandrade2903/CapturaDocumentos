@@ -3,79 +3,46 @@
 use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Database\TTransaction;
 
+/**
+ * Controller/Endpoint REST.
+ * Recebe a requisição HTTP e delega o processamento para a GestaoService.
+ */
 class GestaoDocumentosRestService
 {
     public function handle($param)
     {
+        // Força a saída em JSON para o Angular
         header('Content-Type: application/json; charset=utf-8');
+
         try {
             $method = strtoupper($_SERVER['REQUEST_METHOD']);
             $action = $param['action'] ?? '';
 
-            
             // ==========================================
             // 1. GERAR URL DE VISUALIZAÇÃO
             // ==========================================
             if ($method === 'GET' && $action === 'visualizar') {
                 $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
                 $nomeArquivo = $param['nome_arquivo'] ?? throw new Exception("Arquivo não informado");
-                // Usa a sua classe AWS nativa para gerar o link temporário
-                $url = AwsService::getTemporaryUrl($tokenUnico, $nomeArquivo);
+
+                // DELEGA PARA A CAMADA DE SERVIÇO
+                $url = GestaoService::visualizarDocumento($tokenUnico, $nomeArquivo);
 
                 echo json_encode(['status' => 'success', 'url' => $url]);
                 exit;
             }
 
             // ==========================================
-            // 2. RECUSAR (EXCLUIR) DOCUMENTO
+            // 2. RECUSAR (REJEITAR) DOCUMENTO
             // ==========================================
             if ($method === 'POST' && $action === 'recusar') {
-                TTransaction::open('data');
 
-            
-                $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
-                $motivo = $param['motivo_rejeicao'] ?? throw new Exception("Motivo da rejeição não informado");
                 $idDocumento = $param['id_documento'] ?? throw new Exception("ID do documento não informado");
-                $documento = new Documento($idDocumento);
-             
+                $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+                $motivo = $param['motivo_rejeicao'] ?? 'Documento rejeitado. Motivo não informado.';
 
-                if (empty($documento->id)) {
-                    throw new Exception("Documento não encontrado no banco de dados.");
-                }
-
-                $collectionRequestId = $documento->collection_request_id;
-                $tipoDocumentoId = $documento->tipo_documento_id;
-
-                // Instancia o documento do banco (ajuste 'Documento' para o nome exato da sua model)
-                $nomeArquivoS3 = basename($documento->storage_path);
-                if(!empty($nomeArquivoS3)) {
-                    AwsService::deleteFile($tokenUnico, $nomeArquivoS3);
-                }
-
-                $documento->storage_path = 'RECUSADO';
-                $documento->status = 'REJEITADO';
-                $documento->motivo_rejeicao = $motivo;
-                $documento->store();
-
-                $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $collectionRequestId)
-                    ->where('tipo_documento_id', '=', $tipoDocumentoId)
-                    ->first();
-
-                if($reqDoc) {
-                    $reqDoc->status = 'REJEITADO';
-                    $reqDoc->store();
-                };
-
-                $collection = new CollectionRequest($collectionRequestId);
-                if ($collection) {
-                    $collection->status = 'PENDENTE';
-                    $collection->store();
-                }
-              
-
-
-
-                TTransaction::close();
+                // DELEGA PARA A CAMADA DE SERVIÇO (Sem sujar esta classe com queries e transactions)
+                GestaoService::recusarDocumento((int) $idDocumento, $tokenUnico, $motivo);
 
                 echo json_encode(['status' => 'success', 'message' => 'Documento recusado com sucesso.']);
                 exit;
@@ -83,11 +50,10 @@ class GestaoDocumentosRestService
 
             throw new Exception("Ação não reconhecida.");
         } catch (Exception $e) {
-            if (TTransaction::get()) {
-                TTransaction::rollback();
-            }
+            // Se qualquer erro estourar na GestaoService, ele cai aqui automaticamente
             http_response_code(400);
-            return ['status' => 'error', 'message' => $e->getMessage()];
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
         }
     }
 }
