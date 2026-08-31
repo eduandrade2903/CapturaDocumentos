@@ -38,7 +38,7 @@ class DocumentoService
             }
 
             // 2º: Atualiza o Documento principal
-            $documento->storage_path = null;
+            $documento->storage_path = 'rejeitado';
             $documento->status = 'REJEITADO';
             $documento->motivo_rejeicao = $motivo;
             $documento->store();
