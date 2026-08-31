@@ -43,10 +43,11 @@ class DocumentoRestService extends AdiantiRecordService
             case 'GET':
                 if($param['action'] === 'visualizar') {
                     return $this->visualiza($param);
+                }else if($param['action'] === 'recusar') {
+                    return $this->recusar($param);
                 }else {
-
+                    return $this->loadAll($param);
                 }
-                return $this->loadAll($param);
             case 'POST':
                 return $this->create($param);
             default:
@@ -525,6 +526,18 @@ class DocumentoRestService extends AdiantiRecordService
 
     echo json_encode(['status' => 'success', 'url' => $url]);
     exit;
+    }
+
+    private function recusar($param) {
+        $idDocumento = $param['id_documento'] ?? throw new Exception("ID do documento não informado");
+        $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+        $motivo = $param['motivo'] ?? throw new Exception("Motivo da recusa não informado");
+
+        // DELEGA PARA A CAMADA DE SERVIÇO
+        DocumentoService::recusarDocumento($idDocumento, $tokenUnico, $motivo);
+
+        echo json_encode(['status' => 'success', 'message' => 'Documento recusado com sucesso.']);
+        exit;
     }
 
 
