@@ -205,32 +205,43 @@ class ProcessoRestService extends AdiantiRecordService
         try {
             TTransaction::open('data');
             $cliente = $this->cliente_logado;
-            $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first() ? true : false;
 
-            if($collectionRequests) {
-                $processo = new Processo($param['id']);
-                $processo->fromArray($param['data']);
-                $processo->store();
-            } else {
-                TTransaction::close();
+            $coleta = CollectionRequest::where('cliente_id', '=', $cliente->id)
+                ->where('processo_id', '=', $param['id'])
+                ->first();
+
+            if (!$coleta) {
                 http_response_code(400);
-                return [
-                    'status' => 'error',
-                    'message' => 'Nenhum processo encontrado.'
-                ];
+                throw new Exception('Nenhum processo encontrado.');
             }
+
+            // 1. Atualiza os dados do Processo normalmente[cite: 3]
+            $processo = new Processo($param['id']);
+            $processo->fromArray($param['data'] ?? []);
+            $processo->store();
+
+            // 2. O GATILHO DO DOSSIÊ: Verifica se o payload está mandando concluir o processo
+            if (isset($param['data']['status']) && strtoupper($param['data']['status']) === 'CONCLUIDO') {
+                $coleta->status = 'CONCLUIDO';
+                $coleta->store();
+
+                $dossieService = new ExtractedDataService($coleta->id);
+                $dossieService->createPdf();
+                $dossieService->salvarJsonLocal();
+            }
+
             TTransaction::close();
             http_response_code(200);
             return [
                 'status' => 'success',
                 'data' => $processo->toArray()
-            ];            
+            ];
         } catch (Exception $e) {
             TTransaction::rollback();
             http_response_code(500);
             return [
                 'status' => 'error',
-                'message'   => 'Erro ao atualizar processo: ' . $e->getMessage()
+                'message' => 'Erro ao atualizar processo: ' . $e->getMessage()
             ];
         }
     }

@@ -23,6 +23,7 @@ class DocumentAnalyzerService
                 throw new Exception("Tipo de documento não encontrado.");
             }
             $nomeDocumentoEsperado = $tipoDoc->nome; // Ex: "RG", "CNH", "COMPROVANTE DE ENDEREÇO"
+            $idTipoDocumentoRecebido = $tipoDoc->id;
 
             TTransaction::close();
 
@@ -31,12 +32,26 @@ class DocumentAnalyzerService
             $base64Image = base64_encode(file_get_contents($file['tmp_name']));
 
             // 3. Monta o Prompt infalível para JSON
-            $prompt = "Você é um especialista em análise e validação de documento brasileiros. " .
-                "Sua tarefa é verificar se a imagem fornecida é um(a) '{$nomeDocumentoEsperado}'. " .
-                "REGRAS ESTABELECIDAS: " .
-                "1. Se a imagem NÃO FOR o documento esperado, retorne estritamente: {\"CODIGO\": \"404\"}. " .
-                "2. Se a imagem FOR o documento esperado, extraia os principais dados legíveis e retorne: {\"CODIGO\": \"200\", \"CAMPO_EXTRAIDO_1\": \"VALOR\", \"CAMPO_EXTRAIDO_2\": \"VALOR\"}. " .
-                "3. Responda APENAS com o JSON, sem nenhuma outra palavra, saudação ou bloco markdown.";
+            $prompt = "Você é um especialista em extração de documentos. O documento enviado é: '{$nomeDocumentoEsperado}' (ID: {$idTipoDocumentoRecebido}). " .
+                "1. Se a imagem for inválida, retorne: {\"CODIGO\": \"404\"}. " .
+                "2. Se for válida, preencha o JSON abaixo. O bloco 'dados_extras' deve conter livremente todas as informações e chaves relevantes encontradas especificamente neste tipo de documento (ex: para banco traga agencia/conta, para CNH traga categoria/validade). " .
+                "3. Responda APENAS com o JSON válido, sem markdown: " .
+                '{' .
+                '  "CODIGO": "200",' .
+                '  "METADADOS": {' .
+                '    "id_tipo_documento": ' . $idTipoDocumentoRecebido . ',' .
+                '    "tipo_documento": "' . $nomeDocumentoEsperado . '"' .
+                '  },' .
+                '  "DADOS_COMUNS": {' .
+                '    "nome_principal": "string ou null",' .
+                '    "cpf": "string ou null",' .
+                '    "data_nascimento": "string ou null"' .
+                '  },' .
+                '  "DADOS_EXTRAS": {' .
+                '    "descricao_chave_1": "valor",' .
+                '    "descricao_chave_2": "valor"' .
+                '  }' .
+                '}';
 
             // 4. Executa a chamada à API
             return self::chamarGeminiAPI($prompt, $mimeType, $base64Image);
