@@ -84,6 +84,7 @@ class ProcessoPage extends TPage
             $dropdown->addAction('Copiar Link', new TAction(['ProcessoPage', 'copiaLinkCollection'], ['token_unico' => $value]), 'fa:copy blue');
             $dropdown->addAction('Renovar Link', new TAction(['ProcessoPage', 'renovarTokenCollection'], ['token_unico' => $value]), 'fa:refresh blue');
             $dropdown->addAction('Conferir Documentos', new TAction(['DocumentoWindow', 'onReload'], ['id' => $object->id]), 'fa:eye blue');
+            $dropdown->addAction('Baixar Documentos', new TAction(['ProcessoPage', 'baixarDocumentosZip'], ['token_unico' => $value]), 'fa:download blue');
             
             return $dropdown;
         });
@@ -241,6 +242,21 @@ class ProcessoPage extends TPage
 
             $page->add($embed->form);
             $page->show();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+
+    public static function baixarDocumentosZip($param)
+    {
+        try {
+            $service = new CollectionRequestService($param['token_unico']);
+            
+            $caminhoZip = $service->baixarDocumentosZip();
+
+            new TMessage('info', filemtime($caminhoZip));
+            
+            TPage::openFile($caminhoZip, 'documentos.zip');
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
         }

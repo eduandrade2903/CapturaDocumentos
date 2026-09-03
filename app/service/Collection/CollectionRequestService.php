@@ -72,6 +72,27 @@ class CollectionRequestService
         }
        
     }
+
+    /**
+     * Faz o download de todos os documentos de uma collection em formato zip.
+     * @author Eduardo Guimarães
+     * @return string
+     */
+    public function baixarDocumentosZip(): string
+    {
+        if(!$this->token_unico){
+            throw new Exception('Token único não informado.');
+        }
+        try {
+            $nomeZip = "collection_{$this->token_unico}_" . date('Ymd_His') . ".zip";
+            $caminhoRelativo = "tmp/" . $nomeZip;
+
+            $caminhoZip = AwsService::downloadFolderAsZip($this->token_unico, $caminhoRelativo);
+            return $caminhoZip;
+        } catch (Exception $e) {
+            throw new Exception("Falha ao baixar zip da coleção: " . $e->getMessage());
+        }
+    }
 }
 
 ?>

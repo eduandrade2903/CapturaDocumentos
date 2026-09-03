@@ -124,7 +124,7 @@ class DocumentoWindow extends TWindow
 
         $documento = DocumentoService::obterDadosDocumento($param['tipo_documento_id'], $param['collection_request_id']);
 
-        $link = DocumentoService::visualizarDocumento($documento['token_unico'], $documento['nome_arquivo']);
+        $link = DocumentoService::visualizarDocumento($documento['token_unico'], urldecode($documento['nome_arquivo']));
 
         if (empty($link)) {
             throw new Exception('Falha ao gerar link seguro de visualização.');
