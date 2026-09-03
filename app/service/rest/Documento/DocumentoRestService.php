@@ -204,7 +204,6 @@ class DocumentoRestService extends AdiantiRecordService
             if (!is_dir($destDir)) {
                 mkdir($destDir, 0777, true);
             }
-
             // 7. Extrair o arquivo enviado
             $filesToProcess = $this->extractUploadedFiles($param);
             if (empty($filesToProcess)) {
