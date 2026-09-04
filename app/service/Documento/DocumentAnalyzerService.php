@@ -32,8 +32,8 @@ class DocumentAnalyzerService
             $base64Image = base64_encode(file_get_contents($file['tmp_name']));
 
             // 3. Monta o Prompt infalível para JSON
-            $prompt = "Você é um especialista em extração de documentos. O documento enviado é: '{$nomeDocumentoEsperado}' (ID: {$idTipoDocumentoRecebido}). " .
-                "1. Se a imagem for inválida, retorne: {\"CODIGO\": \"404\"}. " .
+            $prompt = "Você é um especialista em análise e extração de texto OCR de documentos brasileiros. O documento enviado é: '{$nomeDocumentoEsperado}' (ID: {$idTipoDocumentoRecebido}). " .
+                "1. Se a imagem for inválida, retorne estritamente: {\"CODIGO\": \"404\"}. " .
                 "2. Se for válida, preencha o JSON abaixo. O bloco 'dados_extras' deve conter livremente todas as informações e chaves relevantes encontradas especificamente neste tipo de documento (ex: para banco traga agencia/conta, para CNH traga categoria/validade). " .
                 "3. Responda APENAS com o JSON válido, sem markdown: " .
                 '{' .
