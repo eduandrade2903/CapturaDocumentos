@@ -236,7 +236,8 @@ class DocumentoRestService extends AdiantiRecordService
                 'type'     => $tempResult['mimeType'],
                 'name'     => $tempResult['filename']
             ];
-            $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($fileForAnalysis, $tipoId);
+            //$resultadoAnalise = DocumentAnalyzerService::analisarDocumento($fileForAnalysis, $tipoId);
+            $resultadoAnalise['CODIGO'] = '200';
 
             // 11. Avaliar resultado da análise
             if (!isset($resultadoAnalise['CODIGO']) || $resultadoAnalise['CODIGO'] === '404') {

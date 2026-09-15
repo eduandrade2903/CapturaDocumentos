@@ -71,12 +71,19 @@ class ProcessoPage extends TPage
         $this->datagrid = new BootstrapDatagridWrapper(new TDataGrid);
         $this->datagrid->width = '100%';
      
-        $col_id    = new TDataGridColumn('id', 'Id', 'right', '10%');
-        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '25%');
+        $col_id    = new TDataGridColumn('id', 'Id', 'left', '5%');
+        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '30%');
         $col_email = new TDataGridColumn('email', 'Email', 'left', '15%');
         $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '10%');
         $token     = new TDataGridColumn('collection->token_unico', 'Link', 'center', '10%');
         $status    = new TDataGridColumn('collection->status', 'Status', 'left', '30%');
+
+        $status->setTransformer(function($value, $object, $row) {
+            if($value == 'PENDENTE'){
+                return '<span class="label label-danger">' . $value . '</span>';
+            }
+            return '<span class="label label-success">' . $value . '</span>';
+        });
         
         //Cria um botão dropdown com as ações
         $token->setTransformer(function($value, $object, $row) {
@@ -253,8 +260,6 @@ class ProcessoPage extends TPage
             $service = new CollectionRequestService($param['token_unico']);
             
             $caminhoZip = $service->baixarDocumentosZip();
-
-            new TMessage('info', filemtime($caminhoZip));
             
             TPage::openFile($caminhoZip, 'documentos.zip');
         } catch (Exception $e) {

@@ -91,6 +91,8 @@ class CollectionRequestService
             return $caminhoZip;
         } catch (Exception $e) {
             throw new Exception("Falha ao baixar zip da coleção: " . $e->getMessage());
+        } finally {
+            GenericService::limparArquivos('tmp', 'zip', 2);
         }
     }
 }
