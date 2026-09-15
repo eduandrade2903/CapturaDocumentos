@@ -17,6 +17,7 @@ class DadosProcesso extends TRecord
         parent::addAttribute('ctps');
         parent::addAttribute('serie_uf');
         parent::addAttribute('titulo');
+        parent::addAttribute('pis');
         parent::addAttribute('data_nascimento');
         parent::addAttribute('nome_pai');
         parent::addAttribute('nome_mae');
