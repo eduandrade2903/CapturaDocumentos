@@ -1,0 +1,31 @@
+{
+    "status": "CONCLUIDO",
+    "collection_request_id": 1,
+    "data_processamento": "2026-09-16 17:00:23",
+    "dossie": {
+        "dados_pessoais": {
+            "nome_completo": null,
+            "cpf": null,
+            "data_nascimento": null,
+            "nome_mae": null,
+            "nome_pai": null,
+            "estado_civil": "Não Informado"
+        },
+        "documentacao_trabalhista": {
+            "ctps_numero": null,
+            "pis_pasep": null,
+            "eleitor_numero": null,
+            "eleitor_zona": null,
+            "eleitor_secao": null
+        },
+        "dados_bancarios": {
+            "banco": null,
+            "agencia": null,
+            "conta": null,
+            "titular": null
+        },
+        "dados_especificos": [],
+        "escolaridade": [],
+        "dependentes": []
+    }
+}

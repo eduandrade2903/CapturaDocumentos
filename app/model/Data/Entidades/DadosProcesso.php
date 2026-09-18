@@ -17,6 +17,7 @@ class DadosProcesso extends TRecord
         parent::addAttribute('ctps');
         parent::addAttribute('serie_uf');
         parent::addAttribute('titulo');
+        parent::addAttribute('pis');
         parent::addAttribute('data_nascimento');
         parent::addAttribute('nome_pai');
         parent::addAttribute('nome_mae');
@@ -26,8 +27,10 @@ class DadosProcesso extends TRecord
         parent::addAttribute('nome_banco');
         parent::addAttribute('agencia_banco');
         parent::addAttribute('conta_banco');
+        parent::addAttribute('tipo_conta');
         parent::addAttribute('cep');
         parent::addAttribute('rua');
+        parent::addAttribute('numero');
         parent::addAttribute('bairro');
         parent::addAttribute('cidade');
         parent::addAttribute('estado');

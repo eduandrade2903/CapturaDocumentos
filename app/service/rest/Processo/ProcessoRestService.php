@@ -117,7 +117,6 @@ class ProcessoRestService extends AdiantiRecordService
             ];
         }
     }
-
     public function loadAll($request)
     {
         try {
@@ -199,7 +198,6 @@ class ProcessoRestService extends AdiantiRecordService
             ];
         }
     }
-
     public function update($param)
     {
         try {
@@ -242,6 +240,39 @@ class ProcessoRestService extends AdiantiRecordService
             return [
                 'status' => 'error',
                 'message' => 'Erro ao atualizar processo: ' . $e->getMessage()
+            ];
+        }
+    }
+    public function createDadosProcesso($param)
+    {
+        try {
+            TTransaction::open('data');
+            $cliente = $this->cliente_logado;
+
+            $dadosDoProcesso = $param['dadosProcesso'] ?? null;
+            if (!empty($dadosDoProcesso)) {
+                $dadosDoProcessoService = new ProcessoService();
+                $resultado = $dadosDoProcessoService->criaDadosProcesso($dadosDoProcesso);
+            } else {
+                http_response_code(400);
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhum dado do processo foi informado.'
+                ];
+            }
+            TTransaction::close();
+            http_response_code(201);
+            return [
+                'status' => 'success',
+                'message' => 'Dados do processo criados com sucesso',
+                'data' => $resultado ? $resultado->toArray() : []
+            ];
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            http_response_code(500);
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao criar dados do processo: ' . $e->getMessage()
             ];
         }
     }

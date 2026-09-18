@@ -4,9 +4,9 @@
 use Adianti\Database\TRecord;
 
 class InformacoesVagaProcesso extends TRecord {
-    CONST tablename = 'informacoes_vaga_processo';
-    CONST primarykey = 'id';
-    CONST idpolicy = 'max';
+    CONST TABLENAME = 'informacoes_vaga_processo';
+    CONST PRIMARYKEY = 'id';
+    CONST IDPOLICY = 'max';
 
 
 

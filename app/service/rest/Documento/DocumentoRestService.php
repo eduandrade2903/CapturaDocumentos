@@ -298,7 +298,7 @@ class DocumentoRestService extends AdiantiRecordService
             }
 
             // 16. Salvar dados extraídos pela IA (ExtractedData)
-            $dadosExtraidos = $resultadoAnalise;
+            $dadosExtraidos = NULL;
             unset($dadosExtraidos['CODIGO']);
             if (!empty($dadosExtraidos)) {
                 $extratedData = new ExtractedData();
