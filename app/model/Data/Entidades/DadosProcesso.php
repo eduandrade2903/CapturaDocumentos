@@ -27,8 +27,10 @@ class DadosProcesso extends TRecord
         parent::addAttribute('nome_banco');
         parent::addAttribute('agencia_banco');
         parent::addAttribute('conta_banco');
+        parent::addAttribute('tipo_conta');
         parent::addAttribute('cep');
         parent::addAttribute('rua');
+        parent::addAttribute('numero');
         parent::addAttribute('bairro');
         parent::addAttribute('cidade');
         parent::addAttribute('estado');

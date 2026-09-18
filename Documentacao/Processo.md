@@ -8,12 +8,13 @@ O serviço **Processo** permite o gerenciamento dos processos/titulares que nece
 
 ## 📌 Sumário das Rotas
 
-| Verbo HTTP  | Método                  | Endpoint / URL      | Requer API Key?   | Descrição                                                              |
-| :---        | :---                    | :---                | :---              | :---                                                                   |
-| `POST`      | `create`                | `/processo`         | ✅ Sim (`Header`) | Cria um novo processo e gera solicitação de coleta automática.        |
-| `GET`       | `getById`/`loadAll`     | `/processo`         | ✅ Sim (`Header`) | Busca processo por `id` ou lista todos os processos com filtros.       |
-| `PUT`       | `update`                | `/processo/{id}`    | ✅ Sim (`Header`) | Atualiza dados de um processo existente pelo `id`.                      |
-| `DELETE`    | `delete`/`deleteAll`    | `/processo/{id}`    | ✅ Sim (`Header`) | Remove um processo por `id` ou todos em lote.                           |
+| Verbo HTTP  | Método                  | Endpoint / URL           | Requer API Key?   | Descrição                                                              |
+| :---        | :---                    | :---                     | :---              | :---                                                                   |
+| `POST`      | `create`                | `/processo`              | ✅ Sim (`Header`) | Cria um novo processo e gera solicitação de coleta automática.        |
+| `POST`      | `createDadosProcesso`   | `/processo/dadosProcesso`| ✅ Sim (`Header`) | Cadastra dados pessoais e profissionais complementares do processo.    |
+| `GET`       | `getById`/`loadAll`     | `/processo`              | ✅ Sim (`Header`) | Busca processo por `id` ou lista todos os processos com filtros.       |
+| `PUT`       | `update`                | `/processo/{id}`         | ✅ Sim (`Header`) | Atualiza dados de um processo existente pelo `id`.                      |
+| `DELETE`    | `delete`/`deleteAll`    | `/processo/{id}`         | ✅ Sim (`Header`) | Remove um processo por `id` ou todos em lote.                           |
 
 ---
 
@@ -89,7 +90,116 @@ Cadastra um novo processo/titular para o cliente solicitante, informando a lista
 
 ---
 
-## 2. 🔍 Consultar Processo (`GET`)
+## 2. 📝 Cadastrar Dados Pessoais do Processo (`POST /processo/dadosProcesso`)
+
+Cadastra os dados pessoais e complementares do processo (`DadosProcesso`), como CPF, RG, CTPS, dados bancários, endereço, filiação e características cadastrais.
+
+> [!NOTE]
+> Caracteres de pontuação em `cpf`, `rg`, `ctps`, `serie_uf`, `titulo` e `cep` são automaticamente higienizados e salvos contendo apenas números/letras.
+
+### Requisição
+
+- **URL**: `https://seu-dominio.com.br/processo/dadosProcesso`
+- **Verbo**: `POST`
+- **Cabeçalhos**:
+  - `api_key: SUA_CHAVE_API_AQUI`
+  - `Authorization: Basic <REST_KEY>`
+  - `Content-Type: application/json`
+
+### Body (JSON)
+
+```json
+{
+  "dadosProcesso": {
+    "processo_id": 1,
+    "cpf": "123.456.789-00",
+    "rg": "12.345.678-9",
+    "ctps": "1234567",
+    "serie_uf": "SP",
+    "titulo": "123456789012",
+    "data_nascimento": "1990-05-15",
+    "nome_pai": "José da Silva",
+    "nome_mae": "Maria da Silva",
+    "grau_de_instrucao": "Superior Completo",
+    "raca_cor": "Branca",
+    "estado_civil": "Solteiro(a)",
+    "nome_banco": "Banco do Brasil",
+    "agencia_banco": "1234",
+    "conta_banco": "56789-0",
+    "cep": "01310-100",
+    "rua": "Avenida Paulista",
+    "bairro": "Bela Vista",
+    "cidade": "São Paulo",
+    "estado": "SP"
+  }
+}
+```
+
+### Parâmetros do Corpo (`dadosProcesso`)
+
+| Campo               | Tipo      | Obrigatório? | Descrição |
+| :---                | :---      | :---         | :--- |
+| `processo_id`       | `integer` | ✅ Sim       | ID do processo ao qual os dados pertencem. |
+| `cpf`               | `string`  | ✅ Sim       | CPF do titular (com ou sem pontuação). |
+| `rg`                | `string`  | ❌ Não       | Documento de identidade (RG). |
+| `ctps`              | `string`  | ❌ Não       | Carteira de trabalho e previdência social. |
+| `serie_uf`          | `string`  | ❌ Não       | UF da série da carteira de trabalho (máx 2 caracteres, ex: `SP`). |
+| `titulo`            | `string`  | ❌ Não       | Título de eleitor. |
+| `data_nascimento`   | `string`  | ❌ Não       | Data de nascimento (`AAAA-MM-DD`). |
+| `nome_pai`          | `string`  | ❌ Não       | Nome completo do pai. |
+| `nome_mae`          | `string`  | ❌ Não       | Nome completo da mãe. |
+| `grau_de_instrucao` | `string`  | ❌ Não       | Escolaridade (`Fundamental Incompleto`, `Médio Completo`, `Superior Completo`, etc.). |
+| `raca_cor`          | `string`  | ❌ Não       | Cor/raça (`Branca`, `Preta`, `Parda`, `Amarela`, `Indígena`). |
+| `estado_civil`      | `string`  | ❌ Não       | Estado civil (`Solteiro(a)`, `Casado(a)`, `Divorciado(a)`, `Viúvo(a)`, `União Estável`). |
+| `nome_banco`        | `string`  | ❌ Não       | Nome da instituição bancária. |
+| `agencia_banco`     | `string`  | ❌ Não       | Número da agência. |
+| `conta_banco`       | `string`  | ❌ Não       | Número da conta com dígito. |
+| `cep`               | `string`  | ❌ Não       | CEP residencial (com ou sem hífen). |
+| `rua`               | `string`  | ❌ Não       | Logradouro / Rua. |
+| `bairro`            | `string`  | ❌ Não       | Bairro. |
+| `cidade`            | `string`  | ❌ Não       | Cidade. |
+| `estado`            | `string`  | ❌ Não       | UF do estado (`SP`, `RJ`, etc. máx 2 caracteres). |
+
+### Resposta de Sucesso (`201 Created`)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "status": "success",
+    "message": "Dados do processo criados com sucesso",
+    "data": {
+      "id": 1,
+      "processo_id": 1,
+      "cpf": "12345678900",
+      "rg": "123456789",
+      "ctps": "1234567",
+      "serie_uf": "SP",
+      "titulo": "123456789012",
+      "data_nascimento": "1990-05-15",
+      "nome_pai": "José da Silva",
+      "nome_mae": "Maria da Silva",
+      "grau_de_instrucao": "Superior Completo",
+      "raca_cor": "Branca",
+      "estado_civil": "Solteiro(a)",
+      "nome_banco": "Banco do Brasil",
+      "agencia_banco": "1234",
+      "conta_banco": "56789-0",
+      "cep": "01310100",
+      "rua": "Avenida Paulista",
+      "bairro": "Bela Vista",
+      "cidade": "São Paulo",
+      "estado": "SP",
+      "created_at": "2026-09-16 16:40:43",
+      "created_by": null
+    }
+  }
+}
+```
+
+---
+
+## 3. 🔍 Consultar Processo (`GET`)
 
 ### Buscar por ID Específico
 
@@ -123,7 +233,7 @@ Cadastra um novo processo/titular para o cliente solicitante, informando a lista
 
 ---
 
-## 3. ✏️ Atualizar Processo (`PUT`)
+## 4. ✏️ Atualizar Processo (`PUT`)
 
 Atualiza os dados de um processo existente pelo seu ID.
 
@@ -150,7 +260,7 @@ Atualiza os dados de um processo existente pelo seu ID.
 
 ---
 
-## 4. 🗑️ Remover Processo (`DELETE`)
+## 5. 🗑️ Remover Processo (`DELETE`)
 
 Exclui um processo do sistema.
 

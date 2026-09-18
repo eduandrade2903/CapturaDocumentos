@@ -2,6 +2,7 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Control\TWindow;
 use Adianti\Database\TTransaction;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
@@ -15,6 +16,7 @@ use Adianti\Widget\Dialog\TToast;
 use Adianti\Widget\Form\TButton;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
+use Adianti\Widget\Util\TActionLink;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBMultiCombo;
@@ -65,6 +67,8 @@ class ProcessoPage extends TPage
         $telefone->addValidation('Telefone', new TRequiredValidator);
 
         $this->form->addAction('Save', new TAction([$this, 'onSave']), 'fa:save green');
+        $this->form->addAction('Dados Vaga', new TAction(['DadosVagaWindow', 'onReload']));
+        $this->form->addAction('Dados Pessoais', new TAction(['DadosProcessoWindow', 'onReload']));
 
         $id->setEditable(FALSE);
 
@@ -92,7 +96,7 @@ class ProcessoPage extends TPage
             $dropdown->addAction('Renovar Link', new TAction(['ProcessoPage', 'renovarTokenCollection'], ['token_unico' => $value]), 'fa:refresh blue');
             $dropdown->addAction('Conferir Documentos', new TAction(['DocumentoWindow', 'onReload'], ['id' => $object->id]), 'fa:eye blue');
             $dropdown->addAction('Baixar Documentos', new TAction(['ProcessoPage', 'baixarDocumentosZip'], ['token_unico' => $value]), 'fa:download blue');
-            
+            $dropdown->addAction('Criar PDF', new TAction(['ProcessoPage', 'geraPdfProcesso'], ['id' => $object->id, 'nome' => $object->nome_completo]), 'fa:file-pdf blue');
             return $dropdown;
         });
 
@@ -262,6 +266,19 @@ class ProcessoPage extends TPage
             $caminhoZip = $service->baixarDocumentosZip();
             
             TPage::openFile($caminhoZip, 'documentos.zip');
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+
+    public static function geraPdfProcesso($param)
+    {
+        try {
+            $service = new ProcessoService();
+            $pdf = $service->criaPdfProcesso($param['id']);
+            $nome = str_replace(' ', '_', $param['nome']);
+
+            TPage::openFile($pdf, 'Ficha_' . $nome . '.pdf');
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
         }
