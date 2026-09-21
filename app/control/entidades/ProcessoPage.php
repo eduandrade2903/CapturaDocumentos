@@ -169,6 +169,8 @@ class ProcessoPage extends TPage
                 }
             }
 
+            EmailService::enviaEmailProcessoNovo($processo);
+
             TTransaction::close();
         } catch (Exception $e) {
             TTransaction::rollback();

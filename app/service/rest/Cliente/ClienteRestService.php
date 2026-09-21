@@ -119,7 +119,7 @@ class ClienteRestService extends AdiantiRecordService
             $cliente->store();
             TTransaction::close();
 
-            ClienteService::enviaApiEmailCliente($cliente, $chave_api);
+            EmailService::enviaApiEmailCliente($cliente, $chave_api);
 
             http_response_code(201); // Set HTTP status code to 201 Created
             return [];
