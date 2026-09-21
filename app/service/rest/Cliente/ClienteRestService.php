@@ -77,7 +77,7 @@ class ClienteRestService extends AdiantiRecordService
             $data['telefone'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['telefone']);
 
 
-            $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
+            $chave_api = bin2hex(random_bytes(16)); // Gera a chave da api 
 
             TTransaction::open('data');
             $cliente = new Cliente();
