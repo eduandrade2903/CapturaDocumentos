@@ -38,7 +38,7 @@ class EmailService
             $replaces = [];
             $replaces['nome_completo'] = $processo->nome_completo;
             $replaces['email'] = $processo->email;
-            $replaces['link'] = $processo->collection->token_unico;
+            $replaces['link'] = 'http://localhost:3000/public/'. $processo->collection->token_unico;
 
             $assunto = 'CRH Digital - Cadastro de Processo';
 

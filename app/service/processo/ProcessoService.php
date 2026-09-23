@@ -5,6 +5,70 @@ use Adianti\Registry\TSession;
 
 class ProcessoService {
 
+    private string $cliente_id;
+
+    public function __construct()
+    {
+        $this->cliente_id = $_SESSION['template']['userunitcustomcode'];
+    }
+
+    public function criaProcesso($param)
+    {
+        try {
+
+            $param['num_documento'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['num_documento'])));
+            $param['telefone'] = str_replace(')', '', str_replace('(', '', str_replace('-', '', str_replace(' ', '', $param['telefone']))));
+
+            TTransaction::open('data');
+            $processo = $param['id'] ? new Processo($param['id']) : new Processo;
+            $processo->fromArray($param);
+            $processo->store();
+
+
+            $collectionRequest = CollectionRequest::where('cliente_id', '=', $this->cliente_id)
+                ->where('processo_id', '=', $processo->id)
+                ->first();
+
+            $isNewRequest = false;
+
+            if (!$collectionRequest) {
+                $collectionRequestNew = CollectionRequest::registra($this->cliente_id, $processo->id, 'pendente');
+                $collectionRequest = $collectionRequestNew['model'];
+                $isNewRequest = true;
+            }
+
+            $documentos_existentes = [];
+            if (!$isNewRequest) {
+                $docs_atuais = CollectionRequestDocumento::where('collection_request_id', '=', $collectionRequest->id)->load();
+                if ($docs_atuais) {
+                    foreach ($docs_atuais as $doc) {
+                        $documentos_existentes[] = $doc->tipo_documento_id;
+                    }
+                }
+            }
+
+            if (!empty($param['tipos_documentos'])) {
+                foreach ($param['tipos_documentos'] as $tipo_documento_id) {
+                    if (!in_array($tipo_documento_id, $documentos_existentes)) {
+                        $collectionrequestdocumento = new CollectionRequestDocumento();
+                        $collectionrequestdocumento->collection_request_id = $collectionRequest->id;
+                        $collectionrequestdocumento->tipo_documento_id = $tipo_documento_id;
+                        $collectionrequestdocumento->status = 'pendente';
+                        $collectionrequestdocumento->data_criacao = date('Y-m-d H:i:s');
+                        $collectionrequestdocumento->store();
+                    }
+                }
+            }
+
+            EmailService::enviaEmailProcessoNovo($processo);
+
+            TTransaction::close();
+        } catch (Exception $e) {
+            TTransaction::rollback();
+            throw new Exception($e->getMessage());
+        }
+    }
+    
 
     public function criaDadosProcesso (Array $dadosProcesso) {
 
