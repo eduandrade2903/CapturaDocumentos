@@ -236,36 +236,46 @@ class ProcessoRestService extends AdiantiRecordService
                 ->first();
 
             if (!$coleta) {
+                TTransaction::close();
                 http_response_code(400);
                 throw new Exception('Nenhum processo encontrado.');
             }
 
-            // 1. Atualiza os dados do Processo normalmente[cite: 3]
+            // 1. Atualiza os dados do Processo normalmente
             $processo = new Processo($param['id']);
             $processo->fromArray($param['data'] ?? []);
             $processo->store();
 
-            // 2. O GATILHO DO DOSSIÊ: Verifica se o payload está mandando concluir o processo
-            if (isset($param['data']['status']) && strtoupper($param['data']['status']) === 'CONCLUIDO') {
+            $concluir = isset($param['data']['status']) && strtoupper($param['data']['status']) === 'CONCLUIDO';
+
+            // 2. Atualiza o status da coleta
+            if ($concluir) {
                 $coleta->status = 'CONCLUIDO';
                 $coleta->store();
-
-                $dossieService = new ExtractedDataService($coleta->id);
-                $dossieService->createPdf();
-                $dossieService->salvarJsonLocal();
             }
 
             TTransaction::close();
+
+            // 3. O GATILHO DO DOSSIÊ: Gera o PDF e envia para a AWS S3
+            $dossie = null;
+            if ($concluir) {
+                $processoService = new ProcessoService();
+                $dossie = $processoService->criaPdfProcesso($processo->id);
+            }
+
             http_response_code(200);
             return [
                 'status' => 'success',
-                'data' => $processo->toArray()
+                'data'   => $processo->toArray(),
+                'dossie' => $dossie
             ];
         } catch (Exception $e) {
-            TTransaction::rollback();
+            if (TTransaction::get()) {
+                TTransaction::rollback();
+            }
             http_response_code(500);
             return [
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Erro ao atualizar processo: ' . $e->getMessage()
             ];
         }

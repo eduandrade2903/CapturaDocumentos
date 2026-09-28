@@ -5,11 +5,11 @@ use Adianti\Registry\TSession;
 
 class ProcessoService {
 
-    private string $cliente_id;
+    private ?string $cliente_id;
 
     public function __construct()
     {
-        $this->cliente_id = $_SESSION['template']['userunitcustomcode'];
+        $this->cliente_id = $_SESSION['template']['userunitcustomcode'] ?? null;
     }
 
     public function criaProcesso($param)
@@ -139,13 +139,39 @@ class ProcessoService {
             TTransaction::open('data');
             $dados_pessoais = DadosProcesso::where('processo_id', '=', $id_processo)->first();
             $dados_vaga = InformacoesVagaProcesso::where('processo_id', '=', $id_processo)->first();
+            $coleta = CollectionRequest::where('processo_id', '=', $id_processo)->first();
             TTransaction::close();
 
-            $pdf = GenericService::pdf($id_processo, $dados_pessoais, $dados_vaga);
-            return $pdf;
+            if (!$coleta || empty($coleta->token_unico)) {
+                throw new Exception("Token da coleta não encontrado para enviar o PDF ao S3.");
+            }
+
+            // 1. Gera o PDF localmente na pasta temporária (app/output)
+            $caminhoRelativo = GenericService::pdf($id_processo, $dados_pessoais, $dados_vaga);
+            $caminhoAbsoluto = realpath($caminhoRelativo) ?: $caminhoRelativo;
+            $nomeArquivoS3 = basename($caminhoRelativo); // ficha_processo_{id}.pdf
+
+            // 2. Faz o upload para a AWS S3 em: documentos/{token_unico}/ficha_processo_{id}.pdf
+            $s3Url = AwsService::uploadFile($coleta->token_unico, $nomeArquivoS3, $caminhoAbsoluto);
+
+            // 3. Gera a URL pré-assinada temporária para o front-end abrir o PDF
+            $presignedUrl = AwsService::getTemporaryUrl($coleta->token_unico, $nomeArquivoS3);
+
+            // 4. Remove o arquivo local da pasta app/output após o upload
+            if (file_exists($caminhoAbsoluto)) {
+                @unlink($caminhoAbsoluto);
+            }
+
+            return [
+                'nome_arquivo'  => $nomeArquivoS3,
+                's3_url'        => $s3Url,
+                'presigned_url' => $presignedUrl
+            ];
         } catch (Exception $e) {
-            TTransaction::rollback();
-            throw new Exception("Erro ao gerar PDF: " . $e->getMessage());
+            if (TTransaction::get()) {
+                TTransaction::rollback();
+            }
+            throw new Exception("Erro ao gerar e enviar PDF para S3: " . $e->getMessage());
         }
     }
 }
