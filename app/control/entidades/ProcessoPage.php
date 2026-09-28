@@ -3,6 +3,8 @@
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
 use Adianti\Control\TWindow;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
 use Adianti\Database\TTransaction;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
@@ -141,35 +143,9 @@ class ProcessoPage extends TPage
     public function onSave(array $param)
     {
         try {
-            $cliente_id = $_SESSION['template']['userunitcustomcode'];
-
-            $param['num_documento'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['num_documento'])));
-            $param['telefone'] = str_replace(')', '', str_replace('(', '', str_replace('-', '', str_replace(' ', '', $param['telefone']))));
-
-            TTransaction::open('data');
-            $processo = $param['id'] ? new Processo($param['id']) : new Processo;
-            $processo->fromArray($param);
-            $processo->store();
-
-
-            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_id)
-                ->where('processo_id', '=', $processo->id)
-                ->first();
-
-            if (!$collectionRequest) {
-                $collectionRequestNew = CollectionRequest::registra($cliente_id, $processo->id, 'pendente');
-
-                foreach ($param['tipos_documentos'] as $tipo_documento_id) {
-                    $collectionrequestdocumento = new CollectionRequestDocumento();
-                    $collectionrequestdocumento->collection_request_id = $collectionRequestNew['model']->id;
-                    $collectionrequestdocumento->tipo_documento_id = $tipo_documento_id;
-                    $collectionrequestdocumento->status = 'pendente';
-                    $collectionrequestdocumento->data_criacao = date('Y-m-d H:i:s');
-                    $collectionrequestdocumento->store();
-                }
-            }
-
-            TTransaction::close();
+            $service = new ProcessoService();
+            $service->criaProcesso($param);
+            
         } catch (Exception $e) {
             TTransaction::rollback();
             throw new Exception($e->getMessage());
@@ -233,10 +209,56 @@ class ProcessoPage extends TPage
         }
        
     }
+
+    public function onEdit($param)
+    {
+        try {
+            if (isset($param['key'])) {
+                $key = $param['key'];
+                
+                TTransaction::open('data');
+                
+                // Carrega o processo
+                $processo = new Processo($key);
+                
+                // Busca a solicitação vinculada ao processo
+                $collectionRequest = CollectionRequest::where('processo_id', '=', $processo->id)->first();
+                
+                $documentos_selecionados = [];
+                
+                if ($collectionRequest) {
+                    // Busca os documentos vinculados na tabela pivot
+                    $documentos_req = CollectionRequestDocumento::where('collection_request_id', '=', $collectionRequest->id)->load();
+                    
+                    if ($documentos_req) {
+                        foreach ($documentos_req as $doc) {
+                            // Preenche o array com os IDs dos Tipos de Documentos
+                            $documentos_selecionados[] = $doc->tipo_documento_id;
+                        }
+                    }
+                }
+                
+                // Cria dinamicamente a propriedade com o mesmo nome do TDBMultiCombo
+                $processo->tipos_documentos = $documentos_selecionados;
+                
+                // Envia os dados para o formulário
+                $this->form->setData($processo);
+                
+                TTransaction::close();
+            }
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
     
     public static function onEditCurtain($param = null)
     {
         try {
+
+            //$criteria = new TCriteria;
+            //$criteria->add(new TFilter('collection_request_id', '=', $id));
+        
             $page = TPage::create();
             $page->setTargetContainer('adianti_right_panel');
             $page->setProperty('override', 'true');
