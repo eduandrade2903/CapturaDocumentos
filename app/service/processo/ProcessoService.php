@@ -53,14 +53,14 @@ class ProcessoService {
     {
         $arrayVaga = (array) $dadosVaga;
         try {
-            TTransaction::open('data');
+           
             $dados = new InformacoesVagaProcesso();
             $dados->fromArray($arrayVaga);
             $dados->created_at = date('Y-m-d H:i:s');
             $dados->created_by = TSession::getValue('userid');
             $dados->store();
 
-            TTransaction::close();
+            
 
             return $dados;
         } catch (Exception $e) {

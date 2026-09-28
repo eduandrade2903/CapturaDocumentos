@@ -25,16 +25,13 @@ class ProcessoRestService extends AdiantiRecordService
 
         TTransaction::open('data');
 
-        // 1. Tenta identificar o cliente pela API Key (Integração de sistemas externos)
+        // 1. Identifica o cliente
         if (!empty($this->API_KEY)) {
             $this->cliente_logado = Cliente::getClienteByApiKey($this->API_KEY);
-        }
-        // 2. Se não tem API Key, tenta identificar pelo Token JWT (Dashboard Angular)
-        elseif (!empty($userid)) {
+        } elseif (!empty($userid)) {
             $this->cliente_logado = Cliente::where('system_user_id', '=', $userid)->first();
         }
 
-        // Se nenhuma das duas formas encontrar um cliente, barra o acesso
         if (empty($this->cliente_logado)) {
             TTransaction::close();
             throw new Exception('Sem autorização. Forneça uma API Key válida ou faça login no sistema.');
@@ -62,6 +59,12 @@ class ProcessoRestService extends AdiantiRecordService
                 }
                 break;
             case 'POST':
+                // 💡 O DESVIO SEGURO: Se o Angular pedir a action 'salvar_dados', executa esta função.
+                if (isset($param['action']) && $param['action'] === 'salvar_dados') {
+                    return $this->createDadosProcesso($param);
+                }
+
+                // Caso contrário, segue o fluxo normal de criação de processo
                 return $this->create($param);
                 break;
             case 'PUT':
@@ -92,19 +95,32 @@ class ProcessoRestService extends AdiantiRecordService
                 ];
             }
 
+            // 1. Cria o candidato (Processo)
             $processo = new Processo();
             $processo->fromArray($request['data'] ?? []);
-            $processo->store(); // Chama o método verifica() para validar os campos obrigatórios
+            $processo->store();
 
+            // 2. Registra a coleta e os documentos solicitados
             $coletaRegistrada = CollectionRequest::registra($cliente->id, $processo->id, 'pendente');
-
             Collectionrequestdocumento::criaCollectionDocumento($coletaRegistrada['model']->id, $request['data']['tipos_documentos']);
+
+            // 3. NOVO: Salva os dados da Vaga (se forem enviados no payload)
+            if (!empty($request['data']['dados_vaga'])) {
+                $dadosVaga = $request['data']['dados_vaga'];
+
+                // Injeta o ID do processo recém-criado na vaga
+                $dadosVaga['processo_id'] = $processo->id;
+
+                // O método criaInformacoesVaga espera um object
+                $processoService = new ProcessoService();
+                $processoService->criaInformacoesVaga((object) $dadosVaga);
+            }
 
             TTransaction::close();
             http_response_code(201);
             return [
                 'status' => 'success',
-                'message' => 'Usuário criado com sucesso',
+                'message' => 'Processo e Vaga criados com sucesso',
                 'data' => $processo->toArray(),
                 'token' => ['token_unico' => $coletaRegistrada['model']->token_unico]
             ];
@@ -113,7 +129,7 @@ class ProcessoRestService extends AdiantiRecordService
             http_response_code(500);
             return [
                 'status' => 'error',
-                'message'=> 'Erro ao criar usuário: ' . $e->getMessage()
+                'message' => 'Erro ao criar usuário: ' . $e->getMessage()
             ];
         }
     }
@@ -168,13 +184,8 @@ class ProcessoRestService extends AdiantiRecordService
             TTransaction::open('data');
             $cliente = $this->cliente_logado;
             $collectionRequests = CollectionRequest::where('cliente_id', '=', $cliente->id)->where('processo_id', '=', $param['id'])->first();
-            $processo = null;
 
-            if(isset($collectionRequests)){
-                $processo = Processo::find($param['id']);
-            }
-
-            if(empty($collectionRequests)) {
+            if (empty($collectionRequests)) {
                 TTransaction::close();
                 http_response_code(400);
                 return [
@@ -182,12 +193,28 @@ class ProcessoRestService extends AdiantiRecordService
                     'message' => 'Nenhum processo encontrado.'
                 ];
             }
-            
+
+            // 1. Carrega o processo base
+            $processo = Processo::find($param['id']);
+            $arrayProcesso = $processo->toArray();
+
+            // 2. 💡 CARREGA OS DADOS DO CANDIDATO
+            $dadosProcesso = DadosProcesso::where('processo_id', '=', $processo->id)->first();
+            if ($dadosProcesso) {
+                $arrayProcesso['dados_processo'] = $dadosProcesso->toArray();
+            }
+
+            // 3. 💡 CARREGA OS DADOS DA VAGA
+            $dadosVaga = InformacoesVagaProcesso::where('processo_id', '=', $processo->id)->first();
+            if ($dadosVaga) {
+                $arrayProcesso['dados_vaga'] = $dadosVaga->toArray();
+            }
+
             TTransaction::close();
             http_response_code(200);
             return [
                 'status' => 'success',
-                'data' => $processo->toArray()
+                'data' => $arrayProcesso
             ];
         } catch (Exception $e) {
             TTransaction::rollback();
