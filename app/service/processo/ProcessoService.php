@@ -146,6 +146,10 @@ class ProcessoService {
                 throw new Exception("Token da coleta não encontrado para enviar o PDF ao S3.");
             }
 
+            $caminhoXlsx = GenericService::xlsx($id_processo, $dados_pessoais, $dados_vaga);
+            $absXlsx = realpath($caminhoXlsx) ?: $caminhoXlsx;
+            $nomeXlsxS3 = basename($caminhoXlsx);
+
             // 1. Gera o PDF localmente na pasta temporária (app/output)
             $caminhoRelativo = GenericService::pdf($id_processo, $dados_pessoais, $dados_vaga);
             $caminhoAbsoluto = realpath($caminhoRelativo) ?: $caminhoRelativo;
@@ -153,19 +157,21 @@ class ProcessoService {
 
             // 2. Faz o upload para a AWS S3 em: documentos/{token_unico}/ficha_processo_{id}.pdf
             $s3Url = AwsService::uploadFile($coleta->token_unico, $nomeArquivoS3, $caminhoAbsoluto);
+            $s3UrlXlsx = AwsService::uploadFile($coleta->token_unico, $nomeXlsxS3, $absXlsx);
 
             // 3. Gera a URL pré-assinada temporária para o front-end abrir o PDF
             $presignedUrl = AwsService::getTemporaryUrl($coleta->token_unico, $nomeArquivoS3);
+            $presignedUrlXlsx = AwsService::getTemporaryUrl($coleta->token_unico, $nomeXlsxS3);
 
-            // 4. Remove o arquivo local da pasta app/output após o upload
-            if (file_exists($caminhoAbsoluto)) {
-                @unlink($caminhoAbsoluto);
-            }
+            
 
             return [
                 'nome_arquivo'  => $nomeArquivoS3,
                 's3_url'        => $s3Url,
-                'presigned_url' => $presignedUrl
+                'presigned_url' => $presignedUrl,
+                'nome_arquivo_xlsx' => $nomeXlsxS3,
+                's3_url_xlsx' => $s3UrlXlsx,
+                'presigned_url_xlsx' => $presignedUrlXlsx
             ];
         } catch (Exception $e) {
             if (TTransaction::get()) {

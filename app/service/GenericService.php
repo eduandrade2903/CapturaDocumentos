@@ -5,6 +5,13 @@ use Adianti\Registry\TSession;
 use Adianti\Widget\Base\TElement;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class GenericService{
     
@@ -16,21 +23,31 @@ class GenericService{
      */
     public static function limparArquivos(string $pasta, string $extensao, int $horasVida = 2): void
     {
-        if (!is_dir($pasta)) {
-            return;
-        }
+        // Limpa o cache de status de arquivos do PHP para ler o filemtime real atualizado
+        clearstatcache();
 
-        // Calcula o timestamp limite (agora - 2 horas)
-        $tempoLimite = time() - ($horasVida * 3600);
+        // Garante no mínimo 2 horas (7200 segundos) de retenção antes de apagar
+        $horas = max($horasVida, 2);
+        $tempoLimite = time() - ($horas * 3600);
 
-        // Busca apenas arquivos com a extensão enviada
-        $arquivos = glob($pasta . '/*.' . $extensao);
+        // Verifica sempre dentro de app/output e tmp
+        $pastasParaVerificar = array_unique([$pasta, 'app/output', 'tmp']);
 
-        if ($arquivos) {
-            foreach ($arquivos as $arquivo) {
-                // filemtime pega a data de modificação/criação do arquivo
-                if (is_file($arquivo) && filemtime($arquivo) < $tempoLimite) {
-                    @unlink($arquivo); // O @ oculta warnings caso o arquivo esteja travado
+        foreach ($pastasParaVerificar as $diretorio) {
+            $diretorio = rtrim($diretorio, '/\\');
+            if (!is_dir($diretorio)) {
+                continue;
+            }
+
+            // Busca apenas arquivos com a extensão enviada (ou qualquer arquivo temporário dentro de tmp)
+            $arquivos = glob($diretorio . '/*.' . ltrim($extensao, '.'));
+
+            if ($arquivos) {
+                foreach ($arquivos as $arquivo) {
+                    // Apaga SOMENTE se a última modificação for anterior a (agora - 2 horas)
+                    if (is_file($arquivo) && filemtime($arquivo) < $tempoLimite) {
+                        @unlink($arquivo);
+                    }
                 }
             }
         }
@@ -294,4 +311,270 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #000; m
 
         return $caminhoRelativo;
     }
+
+    /**
+     * Gera o XLSX da Ficha do Processo
+     * @param int $processo_id
+     * @param mixed $dados_pessoais
+     * @param mixed $dados_vaga
+     * @return string Caminho relativo do arquivo XLSX gerado
+     */
+    public static function xlsx($processo_id, $dados_pessoais = null, $dados_vaga = null)
+    {
+        // 1. Limpa arquivos XLSX com mais de 1 hora em app/output e tmp
+        self::limparArquivos('app/output', 'xlsx', 1);
+
+        $openedData = false;
+        try {
+            if (!TTransaction::get()) {
+                TTransaction::open('data');
+                $openedData = true;
+            }
+
+            $processo = Processo::find($processo_id);
+
+            if (!$dados_pessoais) {
+                $dados_pessoais = DadosProcesso::where('processo_id', '=', $processo_id)->first();
+            }
+
+            if (!$dados_vaga) {
+                $dados_vaga = InformacoesVagaProcesso::where('processo_id', '=', $processo_id)->first();
+            }
+        } catch (Exception $e) {
+            // Registros não encontrados ou transação já gerenciada
+        } finally {
+            if ($openedData) {
+                try {
+                    TTransaction::close();
+                } catch (Exception $e) {
+                }
+            }
+        }
+
+        // Busca nome do usuário que cadastrou
+        $userName = '';
+        $userId = $dados_pessoais->created_by ?? $dados_vaga->created_by ?? null;
+        if ($userId) {
+            try {
+                TTransaction::open('permission');
+                $systemUser = new SystemUser($userId);
+                if ($systemUser) {
+                    $userName = $systemUser->name;
+                }
+                TTransaction::close();
+            } catch (Exception $e) {
+                TTransaction::rollback();
+            }
+        }
+
+        // Funções auxiliares de formatação
+        $formatCurrency = function ($value) {
+            if ($value === null || $value === '') return '';
+            if (is_numeric($value)) {
+                return 'R$ ' . number_format((float)$value, 2, ',', '.');
+            }
+            return (string)$value;
+        };
+
+        $formatDate = function ($date) {
+            if (empty($date)) return '';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date)) {
+                return date('d/m/Y', strtotime($date));
+            }
+            return $date;
+        };
+
+        $formatCpf = function ($cpf) {
+            $cpf = preg_replace('/\D/', '', (string)$cpf);
+            if (strlen($cpf) === 11) {
+                return substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
+            }
+            return $cpf;
+        };
+
+        $formatCep = function ($cep) {
+            $cep = preg_replace('/\D/', '', (string)$cep);
+            if (strlen($cep) === 8) {
+                return substr($cep, 0, 5) . '-' . substr($cep, 5, 3);
+            }
+            return $cep;
+        };
+
+        $formatPhone = function ($phone) {
+            $phone = preg_replace('/\D/', '', (string)$phone);
+            if (strlen($phone) === 11) {
+                return '(' . substr($phone, 0, 2) . ') ' . substr($phone, 2, 5) . '-' . substr($phone, 7, 4);
+            } elseif (strlen($phone) === 10) {
+                return '(' . substr($phone, 0, 2) . ') ' . substr($phone, 2, 4) . '-' . substr($phone, 6, 4);
+            }
+            return $phone;
+        };
+
+        // Dados da Vaga e Funcionário
+        $empresa = !empty($_SESSION['template']['userunitname']) ? $_SESSION['template']['userunitname'] : 'NOME EMPRESA';
+        $contrato = $dados_vaga->contrato ?? '';
+        $cliente = $dados_vaga->cliente ?? '';
+        $nome_candidato = $processo->nome_completo ?? '';
+        $cargo = $dados_vaga->cargo ?? '';
+        $admissao = $formatDate($dados_vaga->admissao ?? null);
+        $salario = $formatCurrency($dados_vaga->salario ?? null);
+        $valor_vt = $formatCurrency($dados_vaga->valor_vt ?? null);
+        $valor_vr = $formatCurrency($dados_vaga->valor_vr ?? null);
+        $local_unidade = $dados_vaga->local_trabalho ?? '';
+        $horario = $dados_vaga->horario ?? '';
+        $frequencia = $dados_vaga->frequencia ?? '';
+        $telefone_cel = $formatPhone($processo->telefone ?? '');
+        $email = $processo->email ?? '';
+        $obs = $dados_vaga->obs ?? '';
+        $ass = $userName;
+
+        // Documentos
+        $rg = $dados_pessoais->rg ?? '';
+        $cpf = $formatCpf($dados_pessoais->cpf ?? $processo->num_documento ?? '');
+        $ctps = $dados_pessoais->ctps ?? '';
+        $serie = $dados_pessoais->serie_uf ?? '';
+        $pis = $dados_pessoais->pis ?? '';
+        $dt_nasc = $formatDate($dados_pessoais->data_nascimento ?? null);
+        $pai = $dados_pessoais->nome_pai ?? '';
+        $mae = $dados_pessoais->nome_mae ?? '';
+        $grau_instrucao = $dados_pessoais->grau_de_instrucao ?? '';
+        $raca_cor = $dados_pessoais->raca_cor ?? '';
+        $estado_civil = $dados_pessoais->estado_civil ?? '';
+
+        // Endereço
+        $endereco = trim(($dados_pessoais->rua ?? '') . (!empty($dados_pessoais->numero) ? ', ' . $dados_pessoais->numero : ''));
+        $bairro = $dados_pessoais->bairro ?? '';
+        $cep = $formatCep($dados_pessoais->cep ?? '');
+        $cidade = trim(($dados_pessoais->cidade ?? '') . (!empty($dados_pessoais->estado) ? ' - ' . $dados_pessoais->estado : ''));
+
+        // Dados Bancários
+        $banco = $dados_pessoais->nome_banco ?? '';
+        $tipo_conta = $dados_pessoais->tipo_conta ?? '';
+        $ag = $dados_pessoais->agencia_banco ?? '';
+        $num_conta = $dados_pessoais->conta_banco ?? '';
+
+        // Montagem da Planilha XLSX
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Ficha Processo');
+
+        $sheet->getColumnDimension('A')->setWidth(28);
+        $sheet->getColumnDimension('B')->setWidth(55);
+
+        $row = 1;
+
+        // Título da Empresa
+        $sheet->mergeCells("A{$row}:B{$row}");
+        $sheet->setCellValue("A{$row}", mb_strtoupper($empresa));
+        $sheet->getStyle("A{$row}")->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 13],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $row++;
+
+        $addHeader = function (string $titulo, string $bgColor = 'D32F2F', string $textColor = 'FFFFFF') use ($sheet, &$row) {
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->setCellValue("A{$row}", $titulo);
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['rgb' => $textColor], 'size' => 9],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+            ]);
+            $row++;
+        };
+
+        $addRows = function (array $linhas) use ($sheet, &$row) {
+            foreach ($linhas as [$label, $valor]) {
+                $sheet->setCellValueExplicit("A{$row}", $label, DataType::TYPE_STRING);
+                $sheet->setCellValueExplicit("B{$row}", (string)$valor, DataType::TYPE_STRING);
+                $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
+                    'font'    => ['size' => 9],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+                ]);
+                $row++;
+            }
+        };
+
+        $addHeader('INFORMAÇÕES VAGA E FUNCIONÁRIO');
+        $addRows([
+            ['CONTRATO:', $contrato],
+            ['CLIENTE:', $cliente],
+            ['NOME CANDIDATO', $nome_candidato],
+            ['CARGO', $cargo],
+            ['ADMISSÃO:', $admissao],
+            ['SALÁRIO:', $salario],
+            ['VALOR VT:', $valor_vt],
+            ['VALOR VR:', $valor_vr],
+            ['LOCAL/UNIDADE', $local_unidade],
+            ['HORARIO:', $horario],
+            ['FREQUÊNCIA:', $frequencia],
+            ['TELEFONE CEL:', $telefone_cel],
+            ['E-MAIL', $email],
+            ['OBS', $obs],
+            ['ASS:', $ass],
+        ]);
+
+        $addHeader('DOCUMENTOS');
+        $addRows([
+            ['RG:', $rg],
+            ['CPF:', $cpf],
+            ['CTPS:', $ctps],
+            ['SERIE:', $serie],
+            ['PIS:', $pis],
+            ['DT. DE NASC:', $dt_nasc],
+            ['PAI:', $pai],
+            ['MÃE:', $mae],
+            ['GRAU DE INSTRUÇÃO', $grau_instrucao],
+            ['RAÇA/COR', $raca_cor],
+            ['ESTADO CIVIL:', $estado_civil],
+        ]);
+
+        $addHeader('ENDEREÇO:');
+        $addRows([
+            ['ENDEREÇO:', $endereco],
+            ['BAIRRO:', $bairro],
+            ['CEP:', $cep],
+            ['CIDADE', $cidade],
+        ]);
+
+        $addHeader('DADOS PARA SALARIO FAMILIA MENORES DE 14 ANOS');
+        $addRows([
+            ['NOME DO FILHO', ''],
+            ['DATA DE NASC.', ''],
+            ['CPF:', ''],
+        ]);
+
+        $addHeader('DADOS BANCARIOS (ITAU/BRADESCO)', '555555', 'FFEB3B');
+        $addRows([
+            ['BANCO:', $banco],
+            ['TIPO DE CONTA', $tipo_conta],
+            ['AG:', $ag],
+            ['Nº DA CONTA', $num_conta],
+        ]);
+
+        $addHeader('UNIFORMES');
+        $addRows([
+            ['TAMANHO CAMISA', ''],
+            ['TAMANHO CALÇA', ''],
+            ['TAMANHO SAPATO', ''],
+        ]);
+
+        if (!is_dir('app/output')) {
+            @mkdir('app/output', 0777, true);
+        }
+
+        $caminhoRelativo = 'app/output/ficha_processo_' . $processo_id . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($caminhoRelativo);
+
+        if (!file_exists($caminhoRelativo)) {
+            throw new Exception("Erro de permissão: Não foi possível salvar o XLSX em {$caminhoRelativo}");
+        }
+
+        return $caminhoRelativo;
+    }
 }
+
+
