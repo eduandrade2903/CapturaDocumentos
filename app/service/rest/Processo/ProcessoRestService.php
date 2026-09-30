@@ -260,7 +260,16 @@ class ProcessoRestService extends AdiantiRecordService
             $dossie = null;
             if ($concluir) {
                 $processoService = new ProcessoService();
-                $dossie = $processoService->criaPdfProcesso($processo->id);
+                $caminhoPdf = $processoService->criaPdfProcesso($processo->id);
+                $caminhoXlsx = $processoService->criaXlsProcesso($processo->id);
+
+                $collectionService = new CollectionRequestService($coleta->token_unico);
+                $caminhoZip = $collectionService->baixarDocumentosZip();
+
+                $dossie = [
+                    'pdf_path'  => $caminhoPdf,
+                    'xlsx_path' => $caminhoXlsx
+                ];
             }
 
             http_response_code(200);

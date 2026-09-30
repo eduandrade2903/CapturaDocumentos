@@ -99,6 +99,7 @@ class ProcessoPage extends TPage
             $dropdown->addAction('Conferir Documentos', new TAction(['DocumentoWindow', 'onReload'], ['id' => $object->id]), 'fa:eye blue');
             $dropdown->addAction('Baixar Documentos', new TAction(['ProcessoPage', 'baixarDocumentosZip'], ['token_unico' => $value]), 'fa:download blue');
             $dropdown->addAction('Criar PDF', new TAction(['ProcessoPage', 'geraPdfProcesso'], ['id' => $object->id, 'nome' => $object->nome_completo]), 'fa:file-pdf blue');
+            $dropdown->addAction('Criar XLSX', new TAction(['ProcessoPage', 'geraXlsxProcesso'], ['id' => $object->id, 'nome' => $object->nome_completo]), 'fa:file-excel blue');
             return $dropdown;
         });
 
@@ -301,6 +302,20 @@ class ProcessoPage extends TPage
             $nome = str_replace(' ', '_', $param['nome']);
 
             TPage::openFile($pdf, 'Ficha_' . $nome . '.pdf');
+
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+    
+    public static function geraXlsxProcesso($param)
+    {
+        try {
+            $service = new ProcessoService();
+            $xlsx = $service->criaXlsProcesso($param['id']);
+            $nome = str_replace(' ', '_', $param['nome']);
+
+            TPage::openFile($xlsx, 'Ficha_' . $nome . '.xlsx');
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
         }
