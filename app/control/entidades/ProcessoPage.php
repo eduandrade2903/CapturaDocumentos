@@ -2,6 +2,9 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Control\TWindow;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
 use Adianti\Database\TTransaction;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
@@ -15,6 +18,7 @@ use Adianti\Widget\Dialog\TToast;
 use Adianti\Widget\Form\TButton;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
+use Adianti\Widget\Util\TActionLink;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBMultiCombo;
@@ -65,18 +69,27 @@ class ProcessoPage extends TPage
         $telefone->addValidation('Telefone', new TRequiredValidator);
 
         $this->form->addAction('Save', new TAction([$this, 'onSave']), 'fa:save green');
+        $this->form->addAction('Dados Vaga', new TAction(['DadosVagaWindow', 'onReload']));
+        $this->form->addAction('Dados Pessoais', new TAction(['DadosProcessoWindow', 'onReload']));
 
         $id->setEditable(FALSE);
 
         $this->datagrid = new BootstrapDatagridWrapper(new TDataGrid);
         $this->datagrid->width = '100%';
      
-        $col_id    = new TDataGridColumn('id', 'Id', 'right', '10%');
-        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '25%');
+        $col_id    = new TDataGridColumn('id', 'Id', 'left', '5%');
+        $col_nome  = new TDataGridColumn('nome_completo', 'Nome', 'left', '30%');
         $col_email = new TDataGridColumn('email', 'Email', 'left', '15%');
         $cpf       = new TDataGridColumn('num_documento', 'Num. Documento', 'left', '10%');
         $token     = new TDataGridColumn('collection->token_unico', 'Link', 'center', '10%');
         $status    = new TDataGridColumn('collection->status', 'Status', 'left', '30%');
+
+        $status->setTransformer(function($value, $object, $row) {
+            if($value == 'PENDENTE'){
+                return '<span class="label label-danger">' . $value . '</span>';
+            }
+            return '<span class="label label-success">' . $value . '</span>';
+        });
         
         //Cria um botão dropdown com as ações
         $token->setTransformer(function($value, $object, $row) {
@@ -84,7 +97,9 @@ class ProcessoPage extends TPage
             $dropdown->addAction('Copiar Link', new TAction(['ProcessoPage', 'copiaLinkCollection'], ['token_unico' => $value]), 'fa:copy blue');
             $dropdown->addAction('Renovar Link', new TAction(['ProcessoPage', 'renovarTokenCollection'], ['token_unico' => $value]), 'fa:refresh blue');
             $dropdown->addAction('Conferir Documentos', new TAction(['DocumentoWindow', 'onReload'], ['id' => $object->id]), 'fa:eye blue');
-            
+            $dropdown->addAction('Baixar Documentos', new TAction(['ProcessoPage', 'baixarDocumentosZip'], ['token_unico' => $value]), 'fa:download blue');
+            $dropdown->addAction('Criar PDF', new TAction(['ProcessoPage', 'geraPdfProcesso'], ['id' => $object->id, 'nome' => $object->nome_completo]), 'fa:file-pdf blue');
+            $dropdown->addAction('Criar XLSX', new TAction(['ProcessoPage', 'geraXlsxProcesso'], ['id' => $object->id, 'nome' => $object->nome_completo]), 'fa:file-excel blue');
             return $dropdown;
         });
 
@@ -129,35 +144,9 @@ class ProcessoPage extends TPage
     public function onSave(array $param)
     {
         try {
-            $cliente_id = $_SESSION['template']['userunitcustomcode'];
-
-            $param['num_documento'] = str_replace('/', '', str_replace('.', '', str_replace('-', '', $param['num_documento'])));
-            $param['telefone'] = str_replace(')', '', str_replace('(', '', str_replace('-', '', str_replace(' ', '', $param['telefone']))));
-
-            TTransaction::open('data');
-            $processo = $param['id'] ? new Processo($param['id']) : new Processo;
-            $processo->fromArray($param);
-            $processo->store();
-
-
-            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_id)
-                ->where('processo_id', '=', $processo->id)
-                ->first();
-
-            if (!$collectionRequest) {
-                $collectionRequestNew = CollectionRequest::registra($cliente_id, $processo->id, 'pendente');
-
-                foreach ($param['tipos_documentos'] as $tipo_documento_id) {
-                    $collectionrequestdocumento = new CollectionRequestDocumento();
-                    $collectionrequestdocumento->collection_request_id = $collectionRequestNew['model']->id;
-                    $collectionrequestdocumento->tipo_documento_id = $tipo_documento_id;
-                    $collectionrequestdocumento->status = 'pendente';
-                    $collectionrequestdocumento->data_criacao = date('Y-m-d H:i:s');
-                    $collectionrequestdocumento->store();
-                }
-            }
-
-            TTransaction::close();
+            $service = new ProcessoService();
+            $service->criaProcesso($param);
+            
         } catch (Exception $e) {
             TTransaction::rollback();
             throw new Exception($e->getMessage());
@@ -171,11 +160,12 @@ class ProcessoPage extends TPage
         try {
             TTransaction::open('data');
             $cliente_logada = $_SESSION['template']['userunitcustomcode'];
-            $collectionRequest = CollectionRequest::where('cliente_id', '=', $cliente_logada)->load();
+            $collectionService = new CollectionRequestService;
+            $collections = $collectionService->buscarCollectionsCliente($cliente_logada);
 
             $processo_ids = [];
-            if (!empty($collectionRequest)) {
-                foreach ($collectionRequest as $collection) {
+            if (!empty($collections)) {
+                foreach ($collections as $collection) {
                     $processo_ids[] = $collection->processo_id;
                 }
             }
@@ -220,10 +210,56 @@ class ProcessoPage extends TPage
         }
        
     }
+
+    public function onEdit($param)
+    {
+        try {
+            if (isset($param['key'])) {
+                $key = $param['key'];
+                
+                TTransaction::open('data');
+                
+                // Carrega o processo
+                $processo = new Processo($key);
+                
+                // Busca a solicitação vinculada ao processo
+                $collectionRequest = CollectionRequest::where('processo_id', '=', $processo->id)->first();
+                
+                $documentos_selecionados = [];
+                
+                if ($collectionRequest) {
+                    // Busca os documentos vinculados na tabela pivot
+                    $documentos_req = CollectionRequestDocumento::where('collection_request_id', '=', $collectionRequest->id)->load();
+                    
+                    if ($documentos_req) {
+                        foreach ($documentos_req as $doc) {
+                            // Preenche o array com os IDs dos Tipos de Documentos
+                            $documentos_selecionados[] = $doc->tipo_documento_id;
+                        }
+                    }
+                }
+                
+                // Cria dinamicamente a propriedade com o mesmo nome do TDBMultiCombo
+                $processo->tipos_documentos = $documentos_selecionados;
+                
+                // Envia os dados para o formulário
+                $this->form->setData($processo);
+                
+                TTransaction::close();
+            }
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
     
     public static function onEditCurtain($param = null)
     {
         try {
+
+            //$criteria = new TCriteria;
+            //$criteria->add(new TFilter('collection_request_id', '=', $id));
+        
             $page = TPage::create();
             $page->setTargetContainer('adianti_right_panel');
             $page->setProperty('override', 'true');
@@ -240,6 +276,46 @@ class ProcessoPage extends TPage
 
             $page->add($embed->form);
             $page->show();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+
+    public static function baixarDocumentosZip($param)
+    {
+        try {
+            $service = new CollectionRequestService($param['token_unico']);
+            
+            $caminhoZip = $service->baixarDocumentosZip();
+            
+            TPage::openFile($caminhoZip, 'documentos.zip');
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+
+    public static function geraPdfProcesso($param)
+    {
+        try {
+            $service = new ProcessoService();
+            $pdf = $service->criaPdfProcesso($param['id']);
+            $nome = str_replace(' ', '_', $param['nome']);
+
+            TPage::openFile($pdf, 'Ficha_' . $nome . '.pdf');
+
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+    
+    public static function geraXlsxProcesso($param)
+    {
+        try {
+            $service = new ProcessoService();
+            $xlsx = $service->criaXlsProcesso($param['id']);
+            $nome = str_replace(' ', '_', $param['nome']);
+
+            TPage::openFile($xlsx, 'Ficha_' . $nome . '.xlsx');
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
         }

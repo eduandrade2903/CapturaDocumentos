@@ -36,7 +36,7 @@ class ClienteRestService extends AdiantiRecordService
 
             switch ($method) {
                 case 'GET':
-                    if(!$this->API_KEY ){
+                    if(!empty($this->API_KEY) ){
                         return $this->getByKey($param);;
                     }else {
                         return $this->getAll($param);
@@ -77,7 +77,7 @@ class ClienteRestService extends AdiantiRecordService
             $data['telefone'] = str_replace(['.', '-', '/', ',', '(', ')', ' '], '', $data['telefone']);
 
 
-            $chave_api = bin2hex(random_bytes(64)); // Gera a chave da api 
+            $chave_api = bin2hex(random_bytes(16)); // Gera a chave da api 
 
             TTransaction::open('data');
             $cliente = new Cliente();
@@ -119,7 +119,7 @@ class ClienteRestService extends AdiantiRecordService
             $cliente->store();
             TTransaction::close();
 
-            ClienteService::enviaApiEmailCliente($cliente, $chave_api);
+            EmailService::enviaApiEmailCliente($cliente, $chave_api);
 
             http_response_code(201); // Set HTTP status code to 201 Created
             return [];
@@ -222,4 +222,6 @@ class ClienteRestService extends AdiantiRecordService
             return ['message' => $e->getMessage()];
         }
     }
+
+
 }

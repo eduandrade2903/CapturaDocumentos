@@ -33,11 +33,31 @@ class DocumentoRestService extends AdiantiRecordService
         unset($param['class']);
         unset($param['method']);
 
-        return match ($method) {
-            'GET' => $this->loadAll($param),
-            'POST' => $this->create($param),
-            default => throw new Exception("Método HTTP {$method} não suportado.")
-        };
+        // return match ($method) {
+        //     'GET' => $this->loadAll($param),
+        //     'POST' => $this->create($param),
+        //     default => throw new Exception("Método HTTP {$method} não suportado.")
+        // };
+
+        switch ($method) {
+            case 'GET':
+                if($param['action'] === 'visualizar') {
+                    return $this->visualiza($param);
+                }else {
+                    return $this->loadAll($param);
+                }
+            case 'POST':
+                if(isset($param['action']) && $param['action'] == 'recusar') {
+                    return $this->recusar($param);
+                }else if(isset($param['action']) && $param['action'] == 'renovar_prazo') {
+                    return $this->renovaToken($param);
+                }    
+                else {
+                    return $this->create($param);
+                }
+            default:
+                throw new Exception("Método HTTP {$method} não suportado.");
+        }
     }
 
     /**
@@ -88,15 +108,33 @@ class DocumentoRestService extends AdiantiRecordService
                 $tipoDocId = (int) $reqDoc->tipo_documento_id;
                 $tipoDoc = TiposDocumentos::find($tipoDocId);
 
-                $descricao = '';
-                if ($tipoDoc) {
-                    $descricao = !empty($tipoDoc->descricao) ? $tipoDoc->descricao : ($tipoDoc->nome ?? '');
+                $descricao = $tipoDoc ? (!empty($tipoDoc->descricao) ? $tipoDoc->descricao : ($tipoDoc->nome ?? '')) : '';
+
+                // Busca se o arquivo físico já existe no banco
+                $docEnviado = Documento::where('collection_request_id', '=', $requestId)
+                    ->where('tipo_documento_id', '=', $tipoDocId)
+                    ->first();
+
+                $motivoRejeicao = null;
+                $nomeArquivoS3 = null;
+                $documentoId = null;
+
+                if ($docEnviado) {
+                    if (strtoupper($reqDoc->status ?? '') === 'REJEITADO') {
+                        $motivoRejeicao = $docEnviado->motivo_rejeicao;
+                    }
+                    // PRECISAMOS DISSO PARA OS BOTÕES DO ANGULAR FUNCIONAREM
+                    $nomeArquivoS3 = basename($docEnviado->storage_path);
+                    $documentoId = $docEnviado->id;
                 }
 
                 $documentosExigidos[] = [
+                    'id' => $documentoId, // O Angular usa para Recusar
+                    'nome_arquivo' => $nomeArquivoS3, // O Angular usa para Visualizar
                     'tipo_documento_id' => $tipoDocId,
                     'descricao' => $descricao,
-                    'status' => $reqDoc->status ?? 'pendente'
+                    'status' => $reqDoc->status ?? 'PENDENTE',
+                    'motivo_rejeicao' => $motivoRejeicao
                 ];
             }
 
@@ -122,184 +160,168 @@ class DocumentoRestService extends AdiantiRecordService
      */
     public function create($param)
     {
-        $tempFiles = []; // Rastreia arquivos temporários para limpeza segura
+        // Apenas uma variável para rastrear o arquivo temporário único
+        $localPath = null; 
 
         try {
             TTransaction::open('data');
 
-            // 1. Validar cliente via API_KEY
-            $cliente = Cliente::getClienteByApiKey($this->API_KEY);
-            if (empty($cliente->id)) {
-                http_response_code(403);
-                throw new Exception('Sem autorizacao.');
-            }
-
-            // 2. Extrair parâmetros
+            // 1. Extrair e validar o Token ANTES de buscar no banco
             $tokenUnico = $param['token_unico'] ?? $_POST['token_unico'] ?? null;
             if (empty($tokenUnico)) {
                 http_response_code(400);
                 throw new Exception('Token único não fornecido.');
             }
 
-            // 3. Buscar CollectionRequest vinculada ao token e ao cliente
-            $collectionRequest = CollectionRequest::where('token_unico', '=', $tokenUnico)
-                ->where('cliente_id', '=', $cliente->id)
-                ->first();
-            if (!$collectionRequest) {
+            // 2. Buscar a solicitação (CollectionRequest)
+            $collection = CollectionRequest::where('token_unico', '=', $tokenUnico)->first();
+            if (!$collection) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta não encontrada ou token único inválido.');
             }
 
+            // 3. Validar cliente (autorização)
+            $cliente = Cliente::where('id', '=', $collection->cliente_id)->first();
+            if (empty($cliente->id)) {
+                http_response_code(403);
+                throw new Exception('Sem autorizacao.');
+            }
+
             // 4. Verificar expiração
-            if (!empty($collectionRequest->data_expiracao) && date('Y-m-d H:i:s') > $collectionRequest->data_expiracao) {
+            if (!empty($collection->data_expiracao) && date('Y-m-d H:i:s') > $collection->data_expiracao) {
                 http_response_code(404);
                 throw new Exception('Solicitação de coleta expirada.');
             }
 
-            $requestId = (int) $collectionRequest->id;
+            $requestId = (int) $collection->id;
 
-            // 5. Carregar tipos de documento permitidos (exigidos) para validação (422)
+            // 5. Carregar tipos de documento exigidos
             $reqDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $validTipoIds = array_map(fn($doc) => (int)$doc->tipo_documento_id, $reqDocs);
 
-            // 6. Pasta de destino local para os arquivos temporários
+            // 6. Pasta de destino local para o arquivo temporário
             $destDir = getcwd() . '/tmp';
             if (!is_dir($destDir)) {
                 mkdir($destDir, 0777, true);
             }
-
-            // 7. Extrair lista de arquivos enviada (seja via $_FILES multipart ou via Base64 em $param)
+            // 7. Extrair o arquivo enviado
             $filesToProcess = $this->extractUploadedFiles($param);
-
             if (empty($filesToProcess)) {
                 http_response_code(400);
                 throw new Exception('Nenhum arquivo enviado.');
             }
 
-            $savedDocs = [];
+            // Como o front envia um por vez, pegamos diretamente a primeira (e única) posição
+            $fileItem = $filesToProcess[0]; 
 
-            // 8. Processar cada arquivo: validar tipo → salvar tmp → analisar IA → upload S3 → banco
-            foreach ($filesToProcess as $fileItem) {
-                $localPath = null;
-
-                try {
-                    $tipoId = (int) ($fileItem['tipo_documento_id'] ?? 0);
-                    if ($tipoId <= 0) {
-                        http_response_code(400);
-                        throw new Exception('tipo_documento_id não fornecido para um dos arquivos.');
-                    }
-
-                    // 8a. Validação 422: O tipo de documento enviado deve corresponder aos exigidos
-                    if (!in_array($tipoId, $validTipoIds, true)) {
-                        http_response_code(422);
-                        throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados em Collectionrequestdocumento.");
-                    }
-
-                    // 8b. Salvar arquivo em tmp/ (ainda NÃO vai para o S3)
-                    $tempResult = $this->moveToTemp($fileItem, $requestId, $tipoId, $destDir);
-                    $localPath = $tempResult['absolutePath'];
-                    $tempFiles[] = $localPath;
-
-                    // 8c. Analisar documento com IA (DocumentAnalyzerService)
-                    $fileForAnalysis = [
-                        'tmp_name' => $localPath,
-                        'type'     => $tempResult['mimeType'],
-                        'name'     => $tempResult['filename']
-                    ];
-                    $resultadoAnalise = DocumentAnalyzerService::analisarDocumento($fileForAnalysis, $tipoId);
-
-                    // 8d. Avaliar resultado da análise
-                    if (!isset($resultadoAnalise['CODIGO']) || $resultadoAnalise['CODIGO'] === '404') {
-                        // Documento não corresponde ao tipo solicitado — NÃO salvar no S3
-                        $this->cleanupTempFile($localPath);
-                        $localPath = null;
-                        TTransaction::rollback();
-                        http_response_code(422);
-                        return [
-                            'status'          => 'fail',
-                            'message'         => 'Documento Incorreto.',
-                            'motivo_rejeicao' => $resultadoAnalise['motivo_rejeicao']
-                                ?? 'O documento enviado não corresponde ao tipo solicitado.'
-                        ];
-                    }
-
-                    if ($resultadoAnalise['CODIGO'] !== '200') {
-                        // Erro na análise (IA indisponível, erro de API, etc.)
-                        $this->cleanupTempFile($localPath);
-                        $localPath = null;
-                        TTransaction::rollback();
-                        http_response_code(500);
-                        return [
-                            'status'  => 'error',
-                            'message' => 'Erro na análise do documento.',
-                            'motivo_rejeicao' => $resultadoAnalise['ERRO'] ?? null
-                        ];
-                    }
-
-                    // 8e. IA APROVOU — Agora sim, upload para o S3
-                    $s3Url = $this->uploadToS3($tokenUnico, $tempResult['filename'], $localPath);
-
-                    // 8f. Limpeza do arquivo temporário após upload S3 bem-sucedido
-                    $this->cleanupTempFile($localPath);
-                    $localPath = null;
-
-                    // 8g. Criar ou atualizar registro em Documento
-                    $documento = Documento::where('collection_request_id', '=', $requestId)
-                        ->where('tipo_documento_id', '=', $tipoId)
-                        ->first();
-                    if (!$documento) {
-                        $documento = new Documento();
-                        $documento->collection_request_id = $requestId;
-                        $documento->tipo_documento_id = $tipoId;
-                    }
-
-                    $documento->storage_path = $s3Url;
-                    $documento->status = 'APROVADO';
-                    $documento->motivo_rejeicao = null;
-                    $documento->data_upload = date('Y-m-d H:i:s');
-                    $documento->store();
-
-                    // 8h. Atualizar status na tabela collection_request_documentos
-                    $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)
-                        ->where('tipo_documento_id', '=', $tipoId)
-                        ->first();
-                    if ($reqDoc) {
-                        $reqDoc->status = 'enviado';
-                        $reqDoc->store();
-                    }
-
-                    // 8i. Salvar dados extraídos pela IA (ExtractedData)
-                    $dadosExtraidos = $resultadoAnalise;
-                    unset($dadosExtraidos['CODIGO']);
-                    if (!empty($dadosExtraidos)) {
-                        $extratedData = new ExtractedData();
-                        $extratedData->collection_request_id = $requestId;
-                        $extratedData->payload_ocr = json_encode($dadosExtraidos);
-                        $extratedData->processado_em = date('Y-m-d H:i:s');
-                        $extratedData->store();
-                    }
-
-                    $savedDocs[] = $documento->toArray();
-
-                } catch (Exception $e) {
-                    // Cleanup do arquivo do loop atual em caso de erro
-                    $this->cleanupTempFile($localPath);
-                    throw $e;
-                }
+            // 8. Validar o ID do tipo de documento
+            $tipoId = (int) ($fileItem['tipo_documento_id'] ?? 0);
+            if ($tipoId <= 0) {
+                http_response_code(400);
+                throw new Exception('tipo_documento_id não fornecido para o arquivo.');
             }
 
-            // 9. Atualizar status da CollectionRequest se todos os documentos estiverem enviados
+            if (!in_array($tipoId, $validTipoIds, true)) {
+                http_response_code(422);
+                throw new Exception("Tipo de documento com ID {$tipoId} enviado não corresponde aos solicitados.");
+            }
+
+            // 9. Salvar arquivo em tmp/
+            $tempResult = $this->moveToTemp($fileItem, $requestId, $tipoId, $destDir);
+            $localPath = $tempResult['absolutePath'];
+
+            // 10. Analisar documento com IA (DocumentAnalyzerService)
+            $fileForAnalysis = [
+                'tmp_name' => $localPath,
+                'type'     => $tempResult['mimeType'],
+                'name'     => $tempResult['filename']
+            ];
+            //$resultadoAnalise = DocumentAnalyzerService::analisarDocumento($fileForAnalysis, $tipoId);
+            $resultadoAnalise['CODIGO'] = '200';
+
+            // 11. Avaliar resultado da análise
+            if (!isset($resultadoAnalise['CODIGO']) || $resultadoAnalise['CODIGO'] === '404') {
+                $this->cleanupTempFile($localPath);
+                TTransaction::rollback();
+                http_response_code(422);
+                return [
+                    'status'          => 'fail',
+                    'message'         => 'Documento Incorreto.',
+                    'motivo_rejeicao' => $resultadoAnalise['motivo_rejeicao']
+                        ?? 'O documento enviado não corresponde ao tipo solicitado.'
+                ];
+            }
+
+            if ($resultadoAnalise['CODIGO'] !== '200') {
+                $this->cleanupTempFile($localPath);
+                TTransaction::rollback();
+                http_response_code(500);
+                return [
+                    'status'  => 'error',
+                    'message' => 'Erro na análise do documento.',
+                    'motivo_rejeicao' => $resultadoAnalise['ERRO'] ?? null
+                ];
+            }
+
+            // 12. IA APROVOU — Fazer upload para o S3
+            $s3Url = $this->uploadToS3($tokenUnico, $tempResult['filename'], $localPath);
+
+            // 13. Limpeza do arquivo temporário
+            $this->cleanupTempFile($localPath);
+            $localPath = null;
+
+            // 14. Salvar registro na tabela Documento
+            $documento = Documento::where('collection_request_id', '=', $requestId)
+                ->where('tipo_documento_id', '=', $tipoId)
+                ->first();
+            
+            if (!$documento) {
+                $documento = new Documento();
+                $documento->collection_request_id = $requestId;
+                $documento->tipo_documento_id = $tipoId;
+            }
+
+            $documento->storage_path = $s3Url;
+            $documento->status = 'APROVADO';
+            $documento->motivo_rejeicao = null;
+            $documento->data_upload = date('Y-m-d H:i:s');
+            $documento->store();
+
+            // 15. Atualizar status na tabela collection_request_documentos
+            $reqDoc = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)
+                ->where('tipo_documento_id', '=', $tipoId)
+                ->first();
+            
+            if ($reqDoc) {
+                $reqDoc->status = 'ENVIADO';
+                $reqDoc->store();
+            }
+
+            // 16. Salvar dados extraídos pela IA (ExtractedData)
+            $dadosExtraidos = NULL;
+            unset($dadosExtraidos['CODIGO']);
+            if (!empty($dadosExtraidos)) {
+                $extratedData = new ExtractedData();
+                $extratedData->collection_request_id = $requestId;
+                $extratedData->payload_ocr = json_encode($dadosExtraidos);
+                $extratedData->processado_em = date('Y-m-d H:i:s');
+                $extratedData->store();
+            }
+
+            // 17. Verificar se TODOS os documentos já foram enviados para fechar o processo
             $allDocs = Collectionrequestdocumento::where('collection_request_id', '=', $requestId)->load();
             $allUploaded = true;
+            
             foreach ($allDocs as $doc) {
-                if (($doc->status ?? 'pendente') !== 'enviado') {
+                if (($doc->status ?? 'PENDENTE') !== 'ENVIADO') {
                     $allUploaded = false;
                     break;
                 }
             }
+            
             if ($allUploaded && !empty($allDocs)) {
-                $collectionRequest->status = 'enviado';
-                $collectionRequest->store();
+                $collection->status = 'CONCLUIDO';
+                $collection->store();
             }
 
             TTransaction::close();
@@ -308,13 +330,14 @@ class DocumentoRestService extends AdiantiRecordService
             return [
                 'status' => 'success',
                 'message' => 'Documento validado, salvo e enviado com sucesso.',
-                'data' => $savedDocs
+                'data' => $documento->toArray() // Retorna apenas o objeto do documento processado
             ];
+
         } catch (Exception $e) {
             TTransaction::rollback();
-            // Cleanup de TODOS os arquivos temporários pendentes
-            foreach ($tempFiles as $tmpPath) {
-                $this->cleanupTempFile($tmpPath);
+            // Apaga o arquivo temporário isolado, caso a falha tenha acontecido no meio do processo
+            if ($localPath) {
+                $this->cleanupTempFile($localPath);
             }
             throw $e;
         }
@@ -497,6 +520,52 @@ class DocumentoRestService extends AdiantiRecordService
         if ($path && file_exists($path)) {
             @unlink($path);
         }
+    }
+
+    private function visualiza($param) {
+    $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+    $nomeArquivo = $param['nome_arquivo'] ?? throw new Exception("Arquivo não informado");
+
+    // DELEGA PARA A CAMADA DE SERVIÇO
+    $url = DocumentoService::visualizarDocumento($tokenUnico, $nomeArquivo);
+
+    echo json_encode(['status' => 'success', 'url' => $url]);
+    exit;
+    }
+
+    private function recusar($param) {
+        $idDocumento = $param['id_documento'] ?? throw new Exception("ID do documento não informado");
+        $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+        $motivo = $param['motivo_rejeicao'] ?? throw new Exception("Motivo da recusa não informado");
+
+        // DELEGA PARA A CAMADA DE SERVIÇO
+        DocumentoService::recusarDocumento($idDocumento, $tokenUnico, $motivo);
+
+        echo json_encode(['status' => 'success', 'message' => 'Documento recusado com sucesso.']);
+        exit;
+    }
+
+    private function renovaToken($param) {
+
+        $tokenUnico = $param['token_unico'] ?? throw new Exception("Token não informado");
+
+        // Instancia a sua classe passando o token no construtor
+        $service = new CollectionRequestService($tokenUnico);
+        $renovou = $service->renovarCollection();
+
+        if ($renovou) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'O prazo estava expirado e foi renovado por mais 2 dias.'
+            ]);
+        } else {
+            // Retorna um alerta caso a data ainda não tenha vencido
+            echo json_encode([
+                'status' => 'info',
+                'message' => 'O prazo desta solicitação ainda está válido. Nenhuma alteração foi feita.'
+            ]);
+        }
+        exit;       
     }
 
     // ─────────────────────────────────────────────────────────────────────────

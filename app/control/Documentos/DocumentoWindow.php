@@ -1,19 +1,19 @@
 <?php
 
 use Adianti\Control\TAction;
-use Adianti\Control\TPage;
 use Adianti\Control\TWindow;
 use Adianti\Core\AdiantiCoreApplication;
-use Adianti\Core\AdiantiCoreLoader;
 use Adianti\Database\TTransaction;
 use Adianti\Widget\Container\TPanelGroup;
 use Adianti\Widget\Datagrid\TDataGrid;
 use Adianti\Widget\Datagrid\TDataGridColumn;
+use Adianti\Widget\Dialog\TInputDialog;
 use Adianti\Widget\Dialog\TMessage;
-use Adianti\Widget\Form\TButton;
-use Adianti\Widget\Template\THtmlRenderer;
+use Adianti\Widget\Form\TEntry;
+use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TActionLink;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
+use Adianti\Wrapper\BootstrapFormBuilder;
 
 /**
  * SingleWindowView
@@ -49,6 +49,19 @@ class DocumentoWindow extends TWindow
         $col_status = new TDataGridColumn('status', 'Status', 'left');
         $col_data_criacao = new TDataGridColumn('data_criacao', 'Data Upload', 'left');
         $col_storage_path = new TDataGridColumn('storage_path', 'Documento', 'left');
+        $col_recusar = new TDataGridColumn('', 'Recusa', 'left');
+
+        $col_recusar->setTransformer(function($value, $object, $row) {
+            if ($object->status == 'ENVIADO') {
+                $action = new TAction(['DocumentoWindow', 'onRecusar'], ['collection_request_id' => $object->collection_request_id, 'tipo_documento_id' => $object->tipo_documento_id]);
+                $button = new TActionLink('Action Link2', $action, 'white', 8, '', 'far:file #ffffffff');
+                $button->class = 'btn btn-danger';
+                $button->setLabel('Recusar');
+                $button->setImage('fa:times');
+                return $button;
+            }
+            return '';
+        });
 
         
 
@@ -69,6 +82,7 @@ class DocumentoWindow extends TWindow
         $this->datagrid->addColumn($col_status);
         $this->datagrid->addColumn($col_data_criacao);
         $this->datagrid->addColumn($col_storage_path);
+        $this->datagrid->addColumn($col_recusar);
 
         $panel = new TPanelGroup('');
         $panel->add($this->datagrid);
@@ -77,7 +91,8 @@ class DocumentoWindow extends TWindow
                   
     }
 
-    public function onReload($param) {
+    public function onReload($param) 
+    {
         try 
         {
             TTransaction::open('data');
@@ -104,26 +119,41 @@ class DocumentoWindow extends TWindow
         }
     }
 
-    public static function onViewDocument($param){
+    public static function onViewDocument($param)
+    {
 
-        TTransaction::open('data');
-        $documento = Documento::where('tipo_documento_id', '=', $param['tipo_documento_id'])->where('collection_request_id', '=', $param['collection_request_id'])->first();
-        TTransaction::close();
-        $recorte = $_ENV['AWS_LINK'];
-        
-        $caminho_nome = str_replace($recorte, '',$documento->storage_path );
-        $dados = explode('/', $caminho_nome);
-        $token = $dados[0];
-        $nome_arquivo = urldecode($dados[1]);
+        $documento = DocumentoService::obterDadosDocumento($param['tipo_documento_id'], $param['collection_request_id']);
 
-        $awsService = new AwsService();
-        $link = $awsService->getTemporaryUrl($token, $nome_arquivo);
+        $link = DocumentoService::visualizarDocumento($documento['token_unico'], urldecode($documento['nome_arquivo']));
 
         if (empty($link)) {
             throw new Exception('Falha ao gerar link seguro de visualização.');
         }
 
         AdiantiCoreApplication::loadPage('DocumentoView', 'onReload', ['link' => $link]);
+    }
+
+    public static function onRecusar($param)
+    {
+        $documento = DocumentoService::obterDadosDocumento($param['tipo_documento_id'], $param['collection_request_id']);
+    
+        $motivo   = new TEntry('motivo');
+        $form = new BootstrapFormBuilder('motivo_form');
+        $form->addFields( [new TLabel('Motivo: ')], [$motivo] );
+
+        $dados['id_documento'] = $documento['documento_id'];
+        $dados['token'] = $documento['token_unico'];
+        $dados['motivo'] = $motivo;
+        
+        $form->addAction('Confirmar', new TAction(array(__CLASS__, 'onConfirm'), $dados), 'fa:save green');
+        
+        new TInputDialog('Qual o motivo ?', $form);
+    }
+
+    public static function onConfirm( $param )
+    {
+        DocumentoService::recusarDocumento($param['id_documento'], $param['token'], $param['motivo']);
+        new TMessage('info', 'Documento recusado com sucesso!');
     }
 
     

@@ -192,6 +192,7 @@ RewriteRule ^cliente/([A-Za-z0-9]*)$ rest.php?class=ClienteRestService&method=ha
 RewriteRule ^webhook-event$ rest.php?class=WebhookEventRestService&method=handle&%{QUERY_STRING} [NC]
 
 RewriteRule ^processo$ rest.php?class=ProcessoRestService&method=handle&%{QUERY_STRING} [NC]
+RewriteRule ^processo/dadosProcesso$ rest.php?class=ProcessoRestService&method=createDadosProcesso&%{QUERY_STRING} [NC]
 RewriteRule ^processo/([A-Za-z0-9]*)$ rest.php?class=ProcessoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
 
 RewriteRule ^collection$ rest.php?class=CollectionRequestRestService&method=handle&%{QUERY_STRING} [NC]
@@ -203,6 +204,10 @@ RewriteRule ^tiposDocumentos$ rest.php?class=TiposDocumentosRestService&method=h
 
 RewriteRule ^documento$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]
 RewriteRule ^documento/([A-Za-z0-9]*)$ rest.php?class=DocumentoRestService&method=handle&id=$1&%{QUERY_STRING} [NC]
+
+RewriteRule ^perfil$ rest.php?class=PerfilRestService&method=getInfo%{QUERY_STRING} [NC]
+
+RewriteRule ^dashboard/(.*)$ engine.php?class=GestaoDocumentosRestService&method=handle&action=$1 [QSA,L]
 
 # [DEPRECATED] Rota de análise separada removida — análise integrada ao POST /documento
 # RewriteRule ^documentosAnalise$ rest.php?class=DocumentoRestService&method=handle&%{QUERY_STRING} [NC]

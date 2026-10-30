@@ -531,6 +531,87 @@ paths:
     #           schema:
     #             $ref: '#/components/schemas/ErrorResponse'
 
+  /processo/dadosProcesso:
+    post:
+      tags:
+        - Processo
+      summary: Cadastrar Dados Pessoais do Processo
+      description: |
+        Cadastra os dados pessoais e profissionais complementares vinculados a um processo (`DadosProcesso`), como CPF, RG, CTPS, dados bancários, endereço, raça/cor, filiação, etc.
+        
+        Pontuações de CPF, RG, CTPS, série, título e CEP são automaticamente higienizadas (apenas números).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dadosProcesso
+              properties:
+                dadosProcesso:
+                  $ref: '#/components/schemas/DadosProcessoInput'
+      responses:
+        '201':
+          description: Dados do processo criados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Dados do processo criados com sucesso
+                      data:
+                        $ref: '#/components/schemas/DadosProcesso'
+        '400':
+          description: Dados do processo não informados ou inválidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: error
+                      message:
+                        type: string
+                        example: Nenhum dado do processo foi informado.
+        '500':
+          description: Erro interno ou erro de integridade ao salvar dados do processo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: error
+                      message:
+                        type: string
+                        example: "Erro ao criar dados do processo: ..."
+
   /collection:
     # post:
     #   tags:
@@ -1335,6 +1416,143 @@ components:
         telefone:
           type: string
           example: "11988887777"
+
+    DadosProcessoInput:
+      type: object
+      required:
+        - processo_id
+        - cpf
+      properties:
+        processo_id:
+          type: integer
+          description: ID do processo ao qual os dados pessoais pertencem
+          example: 1
+        cpf:
+          type: string
+          description: CPF do titular (com ou sem pontuação)
+          example: "123.456.789-00"
+        rg:
+          type: string
+          description: Número do documento de identidade (RG)
+          example: "12.345.678-9"
+        ctps:
+          type: string
+          description: Carteira de Trabalho e Previdência Social
+          example: "1234567"
+        serie_uf:
+          type: string
+          maxLength: 2
+          description: UF da série da carteira de trabalho (máx 2 caracteres, ex SP)
+          example: "SP"
+        titulo:
+          type: string
+          description: Título de eleitor
+          example: "123456789012"
+        data_nascimento:
+          type: string
+          format: date
+          description: Data de nascimento do titular (AAAA-MM-DD)
+          example: "1990-05-15"
+        nome_pai:
+          type: string
+          description: Nome completo do pai
+          example: "José da Silva"
+        nome_mae:
+          type: string
+          description: Nome completo da mãe
+          example: "Maria da Silva"
+        grau_de_instrucao:
+          type: string
+          description: Grau de escolaridade do titular
+          enum:
+            - Analfabeto
+            - Fundamental Incompleto
+            - Fundamental Completo
+            - Médio Incompleto
+            - Médio Completo
+            - Superior Incompleto
+            - Superior Completo
+            - Pós-Graduação Incompleto
+            - Pós-Graduação Completo
+            - Mestrado Incompleto
+            - Mestrado Completo
+            - Doutorado Incompleto
+            - Doutorado Completo
+            - Outro
+          example: "Superior Completo"
+        raca_cor:
+          type: string
+          description: Raça / cor autodeclarada
+          enum:
+            - Branca
+            - Preta
+            - Parda
+            - Amarela
+            - Indígena
+          example: "Branca"
+        estado_civil:
+          type: string
+          description: Estado civil do titular
+          enum:
+            - Solteiro(a)
+            - Casado(a)
+            - Divorciado(a)
+            - Viúvo(a)
+            - União Estável
+          example: "Solteiro(a)"
+        nome_banco:
+          type: string
+          description: Nome da instituição bancária para pagamento
+          example: "Banco do Brasil"
+        agencia_banco:
+          type: string
+          description: Número da agência bancária
+          example: "1234"
+        conta_banco:
+          type: string
+          description: Número da conta bancária com dígito
+          example: "56789-0"
+        cep:
+          type: string
+          description: CEP residencial (com ou sem hífen)
+          example: "01310-100"
+        rua:
+          type: string
+          description: Logradouro / Rua / Avenida
+          example: "Avenida Paulista"
+        bairro:
+          type: string
+          description: Bairro residencial
+          example: "Bela Vista"
+        cidade:
+          type: string
+          description: Cidade residencial
+          example: "São Paulo"
+        estado:
+          type: string
+          maxLength: 2
+          description: Sigla do estado (UF, ex SP, RJ)
+          example: "SP"
+
+    DadosProcesso:
+      allOf:
+        - $ref: '#/components/schemas/DadosProcessoInput'
+        - type: object
+          properties:
+            id:
+              type: integer
+              description: ID único do registro em dados_processo
+              example: 1
+            created_at:
+              type: string
+              format: date-time
+              description: Data e hora do cadastro
+              example: "2026-09-16 16:40:43"
+            created_by:
+              type: integer
+              nullable: true
+              description: ID do usuário que criou o registro
+              example: null
 
     CollectionRequest:
       type: object
